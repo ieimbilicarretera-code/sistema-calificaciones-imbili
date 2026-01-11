@@ -37,7 +37,6 @@ const userRoleEl = document.getElementById("userRole");
 const anioEl = document.getElementById("anioLectivo");
 const periodosEl = document.getElementById("periodos");
 const btnLogout = document.getElementById("btnLogout");
-
 const modulesMsg = document.getElementById("modulesMsg");
 
 /* =========================
@@ -52,17 +51,17 @@ async function loadConfigGeneral() {
     const snap = await getDoc(doc(db, "config", "general"));
     if (snap.exists()) {
       const cfg = snap.data();
-
       if (instNameEl && cfg?.institucion) instNameEl.textContent = cfg.institucion;
       if (anioEl && cfg?.añoLectivo != null) anioEl.textContent = String(cfg.añoLectivo);
       if (periodosEl && cfg?.periodos != null) periodosEl.textContent = String(cfg.periodos);
     }
   } catch (e) {
-    // si falla, se queda con lo por defecto
+    // no pasa nada
   }
 }
 
 async function loadUserProfile(uid) {
+  // OJO: el doc ID debe ser el UID
   const userSnap = await getDoc(doc(db, "usuarios", uid));
   if (!userSnap.exists()) return null;
   return userSnap.data();
@@ -77,11 +76,9 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // Cargar config general (institución, año, periodos)
   await loadConfigGeneral();
 
   try {
-    // Cargar perfil
     const profile = await loadUserProfile(user.uid);
 
     if (!profile) {
@@ -98,21 +95,17 @@ onAuthStateChanged(auth, async (user) => {
       return;
     }
 
-    // Pintar datos
     if (userNameEl) userNameEl.textContent = profile.nombre || "(Sin nombre)";
     if (userRoleEl) userRoleEl.textContent = profile.rol || "(Sin rol)";
 
-    // Si acaba de cambiar contraseña, marcar mustChangePassword=false
+    // Si acaba de cambiar contraseña, marcamos mustChangePassword=false
     if (localStorage.getItem("justChangedPassword") === "1") {
       try {
         await updateDoc(doc(db, "usuarios", user.uid), { mustChangePassword: false });
-      } catch (e) {
-        // si falla, no bloqueamos
-      }
+      } catch (e) {}
       localStorage.removeItem("justChangedPassword");
     }
 
-    // Mostrar módulos según rol (por ahora texto)
     const rol = (profile.rol || "").toLowerCase();
 
     if (rol === "docente") {

@@ -1,1 +1,94 @@
-pendiente
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Inicio | Calificaciones - IE Imbilí Carretera</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .dash{
+      max-width: 980px;
+      width: 100%;
+    }
+    .topbar{
+      display:flex;justify-content:space-between;align-items:center;
+      gap:10px;margin-bottom:14px;
+    }
+    .pill{
+      border:1px solid var(--border);
+      padding:8px 10px;border-radius:12px;background:#0a1020;
+      font-size:13px;color:var(--muted);
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+      margin-top:12px;
+    }
+    .tile{
+      padding:14px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(10, 16, 32, 0.8);
+      cursor:pointer;
+      transition: transform .08s ease;
+      min-height:110px;
+    }
+    .tile:hover{ transform: translateY(-2px); border-color:#3b82f6; }
+    .tile h3{ margin:0 0 6px; font-size:16px; }
+    .tile p{ margin:0; color:var(--muted); font-size:13px; }
+    .hidden2{ display:none; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card dash">
+      <div class="topbar">
+        <div>
+          <h1 id="instName2">Institución Educativa Imbilí Carretera</h1>
+          <p class="muted" style="margin:4px 0 0;">
+            Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b>
+          </p>
+        </div>
+        <div class="pill">
+          Año lectivo: <b id="yearNow">...</b> | Períodos: <b id="periodsNow">...</b>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div id="modDocentes" class="tile hidden2">
+          <h3>Docentes</h3>
+          <p>Registro de notas, descargas de listados y consolidado.</p>
+        </div>
+
+        <div id="modDirector" class="tile hidden2">
+          <h3>Directores de Grupo</h3>
+          <p>Ver grupo asignado y descargar sábana.</p>
+        </div>
+
+        <div id="modAdministrativos" class="tile hidden2">
+          <h3>Administrativos</h3>
+          <p>Secretaría / Rectoría / Coordinación académica.</p>
+        </div>
+
+        <div id="modSistemas" class="tile hidden2">
+          <h3>Sistemas (Soporte)</h3>
+          <p>Usuarios, permisos, autorizaciones y soporte.</p>
+        </div>
+
+        <div class="tile" id="btnLogout">
+          <h3>Cerrar sesión</h3>
+          <p>Salir del sistema de forma segura.</p>
+        </div>
+      </div>
+
+      <div class="footer muted">
+        Consejo: si un módulo no aparece, es por permisos/rol.
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+

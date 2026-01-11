@@ -3,8 +3,7 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updatePassword,
-  onAuthStateChanged
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
@@ -60,11 +59,10 @@ const instName = document.getElementById("instName");
    Helpers
    ========================= */
 function show(view) {
-  if (!loginView || !forgotView || !forceChangeView) return;
-  loginView.classList.add("hidden");
-  forgotView.classList.add("hidden");
-  forceChangeView.classList.add("hidden");
-  view.classList.remove("hidden");
+  loginView?.classList.add("hidden");
+  forgotView?.classList.add("hidden");
+  forceChangeView?.classList.add("hidden");
+  view?.classList.remove("hidden");
 }
 
 function setMsg(el, text, ok = false) {
@@ -81,141 +79,113 @@ async function loadInstitutionName() {
       if (instName && data?.institucion) instName.textContent = data.institucion;
     }
   } catch (e) {
-    // si falla, no pasa nada
+    // no pasa nada
   }
 }
 loadInstitutionName();
 
 /* =========================
-   2) Login
+   Login
    ========================= */
-if (btnLogin) {
-  btnLogin.addEventListener("click", async () => {
-    const email = (emailEl?.value || "").trim();
-    const pass = passEl?.value || "";
+btnLogin?.addEventListener("click", async () => {
+  const email = (emailEl?.value || "").trim();
+  const pass = passEl?.value || "";
 
-    if (!email || !pass) {
-      alert("Por favor ingresa correo y contraseña.");
+  if (!email || !pass) {
+    alert("Por favor ingresa correo y contraseña.");
+    return;
+  }
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const uid = cred.user.uid;
+
+    // PERFIL: el doc ID debe ser el UID
+    const userSnap = await getDoc(doc(db, "usuarios", uid));
+
+    if (!userSnap.exists()) {
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
       return;
     }
 
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const profile = userSnap.data();
 
-      // Revisar perfil del usuario en Firestore
-      const uid = cred.user.uid;
-      const userSnap = await getDoc(doc(db, "usuarios", uid));
-
-      if (!userSnap.exists()) {
-        alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-        return;
-      }
-
-      const profile = userSnap.data();
-
-      if (profile.activo !== true) {
-        alert("Usuario inactivo. Contacta a soporte.");
-        return;
-      }
-
-      // Si debe cambiar contraseña
-      if (profile.mustChangePassword === true) {
-        show(forceChangeView);
-        setMsg(changeMsg, "");
-        return;
-      }
-
-      // Si todo OK -> app.html
-      window.location.href = "app.html";
-
-    } catch (err) {
-      console.error(err);
-      alert("Error al ingresar. Verifica tu correo y contraseña.");
+    if (profile.activo !== true) {
+      alert("Usuario inactivo. Contacta a soporte.");
+      return;
     }
-  });
-}
+
+    if (profile.mustChangePassword === true) {
+      show(forceChangeView);
+      setMsg(changeMsg, "");
+      return;
+    }
+
+    window.location.href = "app.html";
+  } catch (err) {
+    console.error(err);
+    alert("Error al ingresar. Verifica tu correo y contraseña.");
+  }
+});
 
 /* =========================
-   3) Olvidé contraseña
+   Olvidé contraseña
    ========================= */
-if (linkForgot) {
-  linkForgot.addEventListener("click", (e) => {
-    e.preventDefault();
-    show(forgotView);
-    setMsg(forgotMsg, "");
-    if (forgotEmail) forgotEmail.value = (emailEl?.value || "").trim();
-  });
-}
+linkForgot?.addEventListener("click", (e) => {
+  e.preventDefault();
+  show(forgotView);
+  setMsg(forgotMsg, "");
+  if (forgotEmail) forgotEmail.value = (emailEl?.value || "").trim();
+});
 
-if (btnBackLogin) {
-  btnBackLogin.addEventListener("click", () => {
-    show(loginView);
-  });
-}
+btnBackLogin?.addEventListener("click", () => show(loginView));
 
-if (btnSendReset) {
-  btnSendReset.addEventListener("click", async () => {
-    const email = (forgotEmail?.value || "").trim();
-    if (!email) {
-      setMsg(forgotMsg, "Por favor escribe tu correo.", false);
-      return;
-    }
+btnSendReset?.addEventListener("click", async () => {
+  const email = (forgotEmail?.value || "").trim();
+  if (!email) {
+    setMsg(forgotMsg, "Por favor escribe tu correo.", false);
+    return;
+  }
 
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", true);
-    } catch (err) {
-      console.error(err);
-      setMsg(forgotMsg, "No se pudo enviar el correo. Verifica el correo o contacta a soporte.", false);
-    }
-  });
-}
+  try {
+    await sendPasswordResetEmail(auth, email);
+    setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", true);
+  } catch (err) {
+    console.error(err);
+    setMsg(forgotMsg, "No se pudo enviar el correo. Verifica el correo o contacta a soporte.", false);
+  }
+});
 
 /* =========================
-   4) Cambio obligatorio de contraseña
+   Cambio obligatorio de contraseña
    ========================= */
-if (btnUpdatePass) {
-  btnUpdatePass.addEventListener("click", async () => {
-    const p1 = newPass1?.value || "";
-    const p2 = newPass2?.value || "";
+btnUpdatePass?.addEventListener("click", async () => {
+  const p1 = newPass1?.value || "";
+  const p2 = newPass2?.value || "";
 
-    if (p1.length < 6) {
-      setMsg(changeMsg, "La contraseña debe tener mínimo 6 caracteres.", false);
+  if (p1.length < 6) {
+    setMsg(changeMsg, "La contraseña debe tener mínimo 6 caracteres.", false);
+    return;
+  }
+  if (p1 !== p2) {
+    setMsg(changeMsg, "Las contraseñas no coinciden.", false);
+    return;
+  }
+
+  try {
+    if (!auth.currentUser) {
+      setMsg(changeMsg, "Sesión no válida. Vuelve a iniciar sesión.", false);
+      show(loginView);
       return;
     }
-    if (p1 !== p2) {
-      setMsg(changeMsg, "Las contraseñas no coinciden.", false);
-      return;
-    }
 
-    try {
-      if (!auth.currentUser) {
-        setMsg(changeMsg, "Sesión no válida. Vuelve a iniciar sesión.", false);
-        show(loginView);
-        return;
-      }
+    await updatePassword(auth.currentUser, p1);
+    setMsg(changeMsg, "Proceso exitoso. Continuando...", true);
 
-      await updatePassword(auth.currentUser, p1);
-
-      setMsg(changeMsg, "Proceso exitoso. Continuando...", true);
-
-      // Marca para que app.html actualice mustChangePassword=false
-      localStorage.setItem("justChangedPassword", "1");
-
-      setTimeout(() => {
-        window.location.href = "app.html";
-      }, 800);
-
-    } catch (err) {
-      console.error(err);
-      setMsg(changeMsg, "No se pudo cambiar. Vuelve a iniciar sesión y reintenta.", false);
-    }
-  });
-}
-
-/* =========================
-   5) Listener de sesión
-   ========================= */
-onAuthStateChanged(auth, async (user) => {
-  // aquí no redirigimos automático para no saltarnos la pantalla
+    localStorage.setItem("justChangedPassword", "1");
+    setTimeout(() => (window.location.href = "app.html"), 700);
+  } catch (err) {
+    console.error(err);
+    setMsg(changeMsg, "No se pudo cambiar. Vuelve a iniciar sesión y reintenta.", false);
+  }
 });

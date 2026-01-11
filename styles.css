@@ -1,1 +1,121 @@
-pendiente
+:root{
+  --bg1:#0f172a;
+  --bg2:#111827;
+  --card:#0b1220;
+  --border:#263246;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+  --primary:#4f46e5;
+  --primary2:#4338ca;
+  --danger:#ef4444;
+  --ok:#22c55e;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: Arial, sans-serif;
+  background: radial-gradient(1200px 700px at 20% 10%, #1f2a44 0%, var(--bg1) 45%, var(--bg2) 100%);
+  color:var(--text);
+}
+.page{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+.card{
+  width:100%;
+  max-width:440px;
+  background: rgba(11, 18, 32, 0.92);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:18px 18px 14px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.45);
+}
+.brand{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:12px;
+}
+.logo{
+  width:48px;height:48px;
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  background: linear-gradient(135deg, var(--primary) 0%, #22c55e 100%);
+  font-weight:bold;
+}
+h1{
+  font-size:16px;
+  margin:0;
+}
+h2{
+  margin:10px 0 10px;
+  font-size:18px;
+}
+label{
+  display:block;
+  font-size:13px;
+  margin-top:10px;
+  color:var(--muted);
+}
+input{
+  width:100%;
+  padding:10px 10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#0a1020;
+  color:var(--text);
+  margin-top:6px;
+  outline:none;
+}
+input:focus{
+  border-color:#4f46e5;
+}
+button{
+  width:100%;
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:0;
+  cursor:pointer;
+  font-weight:bold;
+}
+.primary{
+  background: var(--primary);
+  color:white;
+}
+.primary:hover{ background: var(--primary2); }
+.secondary{
+  background: transparent;
+  border:1px solid var(--border);
+  color:var(--text);
+}
+.secondary:hover{ border-color:#3b82f6; }
+.row{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:10px;
+}
+a{
+  color:#93c5fd;
+  text-decoration:none;
+  font-size:13px;
+}
+a:hover{ text-decoration:underline; }
+.muted{ color:var(--muted); }
+.footer{
+  text-align:center;
+  margin-top:14px;
+  font-size:12px;
+}
+.hidden{ display:none; }
+.info{
+  margin-top:10px;
+  font-size:13px;
+}
+.ok{ color:var(--ok); }
+.err{ color:var(--danger); }
+

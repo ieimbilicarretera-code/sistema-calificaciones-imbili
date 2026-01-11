@@ -1,14 +1,20 @@
-/*************************************************
- * FIREBASE CONFIG – CALIFICACIONES IMBILÍ
- * ESTE ARCHIVO CONTIENE TODO FIREBASE
- *************************************************/
-
-// Importar Firebase (SDK v9 modular)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-// 🔹 CONFIGURACIÓN DEL SDK (ESTO ES LO QUE TE CONFUNDÍA)
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+/* =========================
+   Firebase config (calificaciones-imbili)
+   ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
   authDomain: "calificaciones-imbili.firebaseapp.com",
@@ -18,33 +24,119 @@ const firebaseConfig = {
   appId: "1:1027786450920:web:9517539adbb1ea06e5665d"
 };
 
-// 🔹 INICIALIZAR FIREBASE
 const app = initializeApp(firebaseConfig);
-
-// 🔹 SERVICIOS
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// 🔹 LOGIN BÁSICO (PRIMER MÓDULO)
-const form = document.getElementById("loginForm");
-const mensaje = document.getElementById("mensaje");
+/* =========================
+   UI refs
+   ========================= */
+const instNameEl = document.getElementById("instName");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
+const anioEl = document.getElementById("anioLectivo");
+const periodosEl = document.getElementById("periodos");
+const btnLogout = document.getElementById("btnLogout");
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+const modulesMsg = document.getElementById("modulesMsg");
 
-  const correo = document.getElementById("correo").value;
-  const password = document.getElementById("password").value;
+/* =========================
+   Helpers
+   ========================= */
+function setModulesText(text) {
+  if (modulesMsg) modulesMsg.textContent = text;
+}
+
+async function loadConfigGeneral() {
+  try {
+    const snap = await getDoc(doc(db, "config", "general"));
+    if (snap.exists()) {
+      const cfg = snap.data();
+
+      if (instNameEl && cfg?.institucion) instNameEl.textContent = cfg.institucion;
+      if (anioEl && cfg?.añoLectivo != null) anioEl.textContent = String(cfg.añoLectivo);
+      if (periodosEl && cfg?.periodos != null) periodosEl.textContent = String(cfg.periodos);
+    }
+  } catch (e) {
+    // si falla, se queda con lo por defecto
+  }
+}
+
+async function loadUserProfile(uid) {
+  const userSnap = await getDoc(doc(db, "usuarios", uid));
+  if (!userSnap.exists()) return null;
+  return userSnap.data();
+}
+
+/* =========================
+   Auth guard + carga inicial
+   ========================= */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  // Cargar config general (institución, año, periodos)
+  await loadConfigGeneral();
 
   try {
-    await signInWithEmailAndPassword(auth, correo, password);
-    mensaje.innerText = "Ingreso exitoso";
-    mensaje.style.color = "green";
+    // Cargar perfil
+    const profile = await loadUserProfile(user.uid);
 
-    // Más adelante redirigimos según rol
-    // window.location.href = "dashboard.html";
+    if (!profile) {
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+      await signOut(auth);
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (profile.activo !== true) {
+      alert("Usuario inactivo. Contacta a soporte.");
+      await signOut(auth);
+      window.location.href = "index.html";
+      return;
+    }
+
+    // Pintar datos
+    if (userNameEl) userNameEl.textContent = profile.nombre || "(Sin nombre)";
+    if (userRoleEl) userRoleEl.textContent = profile.rol || "(Sin rol)";
+
+    // Si acaba de cambiar contraseña, marcar mustChangePassword=false
+    if (localStorage.getItem("justChangedPassword") === "1") {
+      try {
+        await updateDoc(doc(db, "usuarios", user.uid), { mustChangePassword: false });
+      } catch (e) {
+        // si falla, no bloqueamos
+      }
+      localStorage.removeItem("justChangedPassword");
+    }
+
+    // Mostrar módulos según rol (por ahora texto)
+    const rol = (profile.rol || "").toLowerCase();
+
+    if (rol === "docente") {
+      setModulesText("Acceso Docente: Registro de notas, listados por curso, descarga de consolidado.");
+    } else if (rol === "secretaria") {
+      setModulesText("Acceso Secretaría: Gestión de estudiantes, carga masiva, planillas, sabanas, boletines.");
+    } else if (rol === "rector" || rol === "rectora") {
+      setModulesText("Acceso Rectoría: Reportes generales, revisión y autorizaciones.");
+    } else if (rol === "soporte") {
+      setModulesText("Acceso Soporte: Gestión de usuarios, permisos, autorizaciones y soporte del sistema.");
+    } else {
+      setModulesText("Rol no reconocido. Contacta a soporte para asignación de permisos.");
+    }
 
   } catch (error) {
-    mensaje.innerText = "Error: " + error.message;
-    mensaje.style.color = "red";
+    console.error(error);
+    alert("Error cargando el panel. Revisa tu conexión o contacta a soporte.");
   }
+});
+
+/* =========================
+   Logout
+   ========================= */
+btnLogout?.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
 });

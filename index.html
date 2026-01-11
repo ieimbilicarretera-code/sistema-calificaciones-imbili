@@ -1,1 +1,77 @@
-pendiente
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Login | Calificaciones - IE Imbilí Carretera</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="brand">
+        <!-- Puedes reemplazar por tu logo (img) si quieres -->
+        <div class="logo">IE</div>
+        <div>
+          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+          <p class="muted">Sistema de calificaciones</p>
+        </div>
+      </div>
+
+      <div id="loginView">
+        <h2>Ingreso</h2>
+        <label>Correo</label>
+        <input id="email" type="email" placeholder="correo@dominio.com" autocomplete="username"/>
+
+        <label>Contraseña</label>
+        <input id="password" type="password" placeholder="********" autocomplete="current-password"/>
+
+        <button id="btnLogin" class="primary">Ingresar</button>
+
+        <div class="row">
+          <a href="#" id="linkForgot">Olvidé mi contraseña</a>
+        </div>
+      </div>
+
+      <div id="forgotView" class="hidden">
+        <h2>Recuperar contraseña</h2>
+        <p class="muted">
+          Escribe tu correo. Te enviaremos un enlace para restablecer tu contraseña.
+        </p>
+
+        <label>Correo</label>
+        <input id="forgotEmail" type="email" placeholder="correo@dominio.com"/>
+
+        <button id="btnSendReset" class="primary">Enviar</button>
+        <button id="btnBackLogin" class="secondary">Volver</button>
+
+        <p class="info" id="forgotMsg"></p>
+      </div>
+
+      <div id="forceChangeView" class="hidden">
+        <h2>Cambiar contraseña</h2>
+        <p class="muted">
+          Por seguridad, debes cambiar tu contraseña para continuar.
+        </p>
+
+        <label>Nueva contraseña</label>
+        <input id="newPass1" type="password" placeholder="********"/>
+
+        <label>Confirmar contraseña</label>
+        <input id="newPass2" type="password" placeholder="********"/>
+
+        <button id="btnUpdatePass" class="primary">Guardar</button>
+
+        <p class="info" id="changeMsg"></p>
+      </div>
+
+      <div class="footer muted">
+        © <span id="year"></span> IE Imbilí Carretera
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase (v9 modular) -->
+  <script type="module" src="login.js"></script>
+</body>
+</html>

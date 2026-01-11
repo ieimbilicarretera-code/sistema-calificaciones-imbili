@@ -1,94 +1,122 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Inicio | Calificaciones - IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css"/>
-  <style>
-    .dash{
-      max-width: 980px;
-      width: 100%;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+/* =========================
+   Pega aquí TU firebaseConfig (calificaciones-imbili)
+   ========================= */
+const firebaseConfig = {
+  apiKey: "REEMPLAZA",
+  authDomain: "REEMPLAZA",
+  projectId: "REEMPLAZA"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* UI */
+const instName2 = document.getElementById("instName2");
+const userName = document.getElementById("userName");
+const userRole = document.getElementById("userRole");
+const yearNow = document.getElementById("yearNow");
+const periodsNow = document.getElementById("periodsNow");
+
+const modDocentes = document.getElementById("modDocentes");
+const modDirector = document.getElementById("modDirector");
+const modAdministrativos = document.getElementById("modAdministrativos");
+const modSistemas = document.getElementById("modSistemas");
+const btnLogout = document.getElementById("btnLogout");
+
+function show(el){ el.classList.remove("hidden2"); }
+function hide(el){ el.classList.add("hidden2"); }
+
+async function loadConfig(){
+  try{
+    const snap = await getDoc(doc(db, "config", "general"));
+    if(snap.exists()){
+      const d = snap.data();
+      if(d.institucion) instName2.textContent = d.institucion;
+      if(d.añoLectivoActual) yearNow.textContent = d.añoLectivoActual;
+      if(d.periodos) periodsNow.textContent = d.periodos;
     }
-    .topbar{
-      display:flex;justify-content:space-between;align-items:center;
-      gap:10px;margin-bottom:14px;
-    }
-    .pill{
-      border:1px solid var(--border);
-      padding:8px 10px;border-radius:12px;background:#0a1020;
-      font-size:13px;color:var(--muted);
-    }
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap:12px;
-      margin-top:12px;
-    }
-    .tile{
-      padding:14px;
-      border:1px solid var(--border);
-      border-radius:14px;
-      background: rgba(10, 16, 32, 0.8);
-      cursor:pointer;
-      transition: transform .08s ease;
-      min-height:110px;
-    }
-    .tile:hover{ transform: translateY(-2px); border-color:#3b82f6; }
-    .tile h3{ margin:0 0 6px; font-size:16px; }
-    .tile p{ margin:0; color:var(--muted); font-size:13px; }
-    .hidden2{ display:none; }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="card dash">
-      <div class="topbar">
-        <div>
-          <h1 id="instName2">Institución Educativa Imbilí Carretera</h1>
-          <p class="muted" style="margin:4px 0 0;">
-            Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b>
-          </p>
-        </div>
-        <div class="pill">
-          Año lectivo: <b id="yearNow">...</b> | Períodos: <b id="periodsNow">...</b>
-        </div>
-      </div>
+  }catch(e){}
+}
+loadConfig();
 
-      <div class="grid">
-        <div id="modDocentes" class="tile hidden2">
-          <h3>Docentes</h3>
-          <p>Registro de notas, descargas de listados y consolidado.</p>
-        </div>
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+});
 
-        <div id="modDirector" class="tile hidden2">
-          <h3>Directores de Grupo</h3>
-          <p>Ver grupo asignado y descargar sábana.</p>
-        </div>
+function setModulesByRole(role){
+  // ocultar todo primero
+  hide(modDocentes);
+  hide(modDirector);
+  hide(modAdministrativos);
+  hide(modSistemas);
 
-        <div id="modAdministrativos" class="tile hidden2">
-          <h3>Administrativos</h3>
-          <p>Secretaría / Rectoría / Coordinación académica.</p>
-        </div>
+  // roles esperados en minúscula:
+  // docente, director, secretaria, rector, coordinador, soporte
+  if(role === "docente") show(modDocentes);
+  if(role === "director") show(modDirector);
 
-        <div id="modSistemas" class="tile hidden2">
-          <h3>Sistemas (Soporte)</h3>
-          <p>Usuarios, permisos, autorizaciones y soporte.</p>
-        </div>
+  if(role === "secretaria" || role === "rector" || role === "coordinador"){
+    show(modAdministrativos);
+  }
 
-        <div class="tile" id="btnLogout">
-          <h3>Cerrar sesión</h3>
-          <p>Salir del sistema de forma segura.</p>
-        </div>
-      </div>
+  if(role === "soporte"){
+    show(modSistemas);
+    show(modAdministrativos); // opcional: soporte puede ver administrativos si quieres
+  }
+}
 
-      <div class="footer muted">
-        Consejo: si un módulo no aparece, es por permisos/rol.
-      </div>
-    </div>
-  </div>
+onAuthStateChanged(auth, async (user) => {
+  if(!user){
+    window.location.href = "index.html";
+    return;
+  }
 
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+  // cargar perfil
+  const snap = await getDoc(doc(db, "usuarios", user.uid));
+  if(!snap.exists()){
+    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
 
+  const profile = snap.data();
+
+  if(profile.activo !== true){
+    alert("Usuario inactivo. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  // si acaba de cambiar contraseña desde login.js, bajamos mustChangePassword=false
+  const justChanged = localStorage.getItem("justChangedPassword") === "1";
+  if(justChanged){
+    try{
+      await updateDoc(doc(db, "usuarios", user.uid), { mustChangePassword: false });
+    }catch(e){}
+    localStorage.removeItem("justChangedPassword");
+  }
+
+  userName.textContent = profile.nombre || user.email;
+  const role = (profile.rol || "").toString().trim().toLowerCase();
+  userRole.textContent = role || "sin rol";
+
+  setModulesByRole(role);
+});

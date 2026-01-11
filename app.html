@@ -48,109 +48,41 @@
       padding:22px 22px 14px 22px;
       border-bottom:1px solid var(--border);
     }
-    .brand{
-      display:flex;
-      gap:12px;
-      align-items:center;
-    }
+    .brand{display:flex;gap:12px;align-items:center;}
     .logo{
-      width:44px;height:44px;
-      border-radius:14px;
-      display:grid;
-      place-items:center;
-      font-weight:800;
+      width:44px;height:44px;border-radius:14px;
+      display:grid;place-items:center;font-weight:800;
       background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(0,212,255,.7));
       color:#071022;
       box-shadow: 0 12px 30px rgba(109,94,252,.25);
       user-select:none;
     }
-    .titles h1{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.2px;
-      line-height:1.2;
-    }
-    .titles p{
-      margin:6px 0 0 0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .badge{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      padding:10px 12px;
-      border:1px solid var(--border);
-      border-radius:14px;
-      color:var(--muted);
-      font-size:13px;
-      white-space:nowrap;
-      background: rgba(0,0,0,.15);
-    }
-    .content{
-      padding:18px 22px 22px;
-    }
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:14px;
-    }
+    .titles h1{margin:0;font-size:16px;letter-spacing:.2px;line-height:1.2;}
+    .titles p{margin:6px 0 0 0;font-size:13px;color:var(--muted);}
+    .content{padding:18px 22px 22px;}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;}
     .card{
       border:1px solid var(--border);
       border-radius:16px;
       padding:16px;
       background: rgba(0,0,0,.12);
     }
-    .card h2{
-      margin:0 0 6px 0;
-      font-size:15px;
-      letter-spacing:.2px;
-    }
-    .card p{
-      margin:0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
+    .card h2{margin:0 0 6px 0;font-size:15px;letter-spacing:.2px;}
+    .card p{margin:0;font-size:13px;color:var(--muted);}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
     .btn{
-      border:none;
-      cursor:pointer;
-      padding:11px 14px;
-      border-radius:12px;
-      font-weight:700;
-      color:#fff;
+      border:none;cursor:pointer;padding:11px 14px;border-radius:12px;
+      font-weight:700;color:#fff;
       background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(109,94,252,.70));
       box-shadow: 0 10px 24px rgba(109,94,252,.22);
     }
-    .btn:hover{ filter:brightness(1.04); }
     .btn-danger{
       background: linear-gradient(135deg, rgba(255,77,109,.95), rgba(255,77,109,.65));
       box-shadow: 0 10px 24px rgba(255,77,109,.18);
     }
-    .hint{
-      margin-top:10px;
-      text-align:center;
-      font-size:12px;
-      color:rgba(234,240,255,.62);
-    }
-    .sep{
-      height:1px;
-      background: var(--border);
-      margin:12px 0;
-    }
-    .kpi{
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
+    .sep{height:1px;background: var(--border);margin:12px 0;}
+    .hint{margin-top:10px;text-align:center;font-size:12px;color:rgba(234,240,255,.62);}
+    .kpi{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:flex-end;}
     .pill{
       border:1px solid var(--border);
       background: rgba(0,0,0,.15);
@@ -169,9 +101,7 @@
       <div class="brand">
         <div class="logo">IE</div>
         <div class="titles">
-          <!-- ✅ ID para institución -->
           <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-
           <p>
             Bienvenido(a): <b id="userName">...</b>
             — Rol: <b id="userRole">...</b>
@@ -195,12 +125,10 @@
             </div>
             <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
           </div>
-
           <div class="sep"></div>
           <p class="hint">Consejo: si un módulo no aparece, es por permisos/rol.</p>
         </div>
 
-        <!-- Aquí luego añadimos: módulos por rol -->
         <div class="card" id="modulesCard">
           <h2>Módulos</h2>
           <p id="modulesMsg">Cargando módulos según tu rol...</p>
@@ -209,7 +137,6 @@
     </div>
   </div>
 
-  <!-- ✅ Carga del JS -->
   <script type="module" src="app.js"></script>
 </body>
 </html>

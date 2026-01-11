@@ -1,93 +1,215 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Inicio | Calificaciones - IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sistema de Calificaciones - IE Imbilí Carretera</title>
   <style>
-    .dash{
-      max-width: 980px;
-      width: 100%;
+    :root{
+      --bg1:#050816;
+      --bg2:#0b1b36;
+      --card:rgba(10,20,40,.55);
+      --border:rgba(255,255,255,.12);
+      --text:#eaf0ff;
+      --muted:rgba(234,240,255,.75);
+      --accent:#6d5efc;
+      --accent2:#00d4ff;
+      --danger:#ff4d6d;
     }
-    .topbar{
-      display:flex;justify-content:space-between;align-items:center;
-      gap:10px;margin-bottom:14px;
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(109,94,252,.22), transparent 55%),
+        radial-gradient(900px 520px at 85% 30%, rgba(0,212,255,.16), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 14px;
     }
-    .pill{
+    .wrap{
+      width:min(980px, 100%);
       border:1px solid var(--border);
-      padding:8px 10px;border-radius:12px;background:#0a1020;
-      font-size:13px;color:var(--muted);
+      background:var(--card);
+      backdrop-filter: blur(14px);
+      border-radius:18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    .top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      padding:22px 22px 14px 22px;
+      border-bottom:1px solid var(--border);
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .logo{
+      width:44px;height:44px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      font-weight:800;
+      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(0,212,255,.7));
+      color:#071022;
+      box-shadow: 0 12px 30px rgba(109,94,252,.25);
+      user-select:none;
+    }
+    .titles h1{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.2px;
+      line-height:1.2;
+    }
+    .titles p{
+      margin:6px 0 0 0;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .badge{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      color:var(--muted);
+      font-size:13px;
+      white-space:nowrap;
+      background: rgba(0,0,0,.15);
+    }
+    .content{
+      padding:18px 22px 22px;
     }
     .grid{
       display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap:12px;
-      margin-top:12px;
+      grid-template-columns: 1fr;
+      gap:14px;
     }
-    .tile{
-      padding:14px;
+    .card{
       border:1px solid var(--border);
-      border-radius:14px;
-      background: rgba(10, 16, 32, 0.8);
-      cursor:pointer;
-      transition: transform .08s ease;
-      min-height:110px;
+      border-radius:16px;
+      padding:16px;
+      background: rgba(0,0,0,.12);
     }
-    .tile:hover{ transform: translateY(-2px); border-color:#3b82f6; }
-    .tile h3{ margin:0 0 6px; font-size:16px; }
-    .tile p{ margin:0; color:var(--muted); font-size:13px; }
-    .hidden2{ display:none; }
+    .card h2{
+      margin:0 0 6px 0;
+      font-size:15px;
+      letter-spacing:.2px;
+    }
+    .card p{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      border:none;
+      cursor:pointer;
+      padding:11px 14px;
+      border-radius:12px;
+      font-weight:700;
+      color:#fff;
+      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(109,94,252,.70));
+      box-shadow: 0 10px 24px rgba(109,94,252,.22);
+    }
+    .btn:hover{ filter:brightness(1.04); }
+    .btn-danger{
+      background: linear-gradient(135deg, rgba(255,77,109,.95), rgba(255,77,109,.65));
+      box-shadow: 0 10px 24px rgba(255,77,109,.18);
+    }
+    .hint{
+      margin-top:10px;
+      text-align:center;
+      font-size:12px;
+      color:rgba(234,240,255,.62);
+    }
+    .sep{
+      height:1px;
+      background: var(--border);
+      margin:12px 0;
+    }
+    .kpi{
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .pill{
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.15);
+      border-radius:999px;
+      padding:8px 12px;
+      font-size:12.5px;
+      color:var(--muted);
+    }
+    .pill b{color:var(--text)}
   </style>
 </head>
+
 <body>
-  <div class="page">
-    <div class="card dash">
-      <div class="topbar">
-        <div>
-          <h1 id="instName2">Institución Educativa Imbilí Carretera</h1>
-          <p class="muted" style="margin:4px 0 0;">
-            Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">IE</div>
+        <div class="titles">
+          <!-- ✅ ID para institución -->
+          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+
+          <p>
+            Bienvenido(a): <b id="userName">...</b>
+            — Rol: <b id="userRole">...</b>
           </p>
         </div>
-        <div class="pill">
-          Año lectivo: <b id="yearNow">...</b> | Períodos: <b id="periodsNow">...</b>
-        </div>
       </div>
 
+      <div class="kpi">
+        <div class="pill">Año lectivo: <b id="anioLectivo">...</b></div>
+        <div class="pill">Períodos: <b id="periodos">...</b></div>
+      </div>
+    </div>
+
+    <div class="content">
       <div class="grid">
-        <div id="modDocentes" class="tile hidden2">
-          <h3>Docentes</h3>
-          <p>Registro de notas, descargas de listados y consolidado.</p>
+        <div class="card">
+          <div class="row">
+            <div>
+              <h2>Panel principal</h2>
+              <p>En esta pantalla aparecerán los módulos según el rol del usuario (Docente, Secretaría, Rectoría, Soporte).</p>
+            </div>
+            <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
+          </div>
+
+          <div class="sep"></div>
+          <p class="hint">Consejo: si un módulo no aparece, es por permisos/rol.</p>
         </div>
 
-        <div id="modDirector" class="tile hidden2">
-          <h3>Directores de Grupo</h3>
-          <p>Ver grupo asignado y descargar sábana.</p>
+        <!-- Aquí luego añadimos: módulos por rol -->
+        <div class="card" id="modulesCard">
+          <h2>Módulos</h2>
+          <p id="modulesMsg">Cargando módulos según tu rol...</p>
         </div>
-
-        <div id="modAdministrativos" class="tile hidden2">
-          <h3>Administrativos</h3>
-          <p>Secretaría / Rectoría / Coordinación académica.</p>
-        </div>
-
-        <div id="modSistemas" class="tile hidden2">
-          <h3>Sistemas (Soporte)</h3>
-          <p>Usuarios, permisos, autorizaciones y soporte.</p>
-        </div>
-
-        <div class="tile" id="btnLogout">
-          <h3>Cerrar sesión</h3>
-          <p>Salir del sistema de forma segura.</p>
-        </div>
-      </div>
-
-      <div class="footer muted">
-        Consejo: si un módulo no aparece, es por permisos/rol.
       </div>
     </div>
   </div>
 
+  <!-- ✅ Carga del JS -->
   <script type="module" src="app.js"></script>
 </body>
 </html>

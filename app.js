@@ -9,12 +9,7 @@ import {
   getFirestore,
   doc,
   getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  limit
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
@@ -34,205 +29,203 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /* =========================
-   UI refs
+   UI
    ========================= */
-document.getElementById("yearApp").textContent = new Date().getFullYear();
+const yearEl = document.getElementById("year");
+yearEl.textContent = new Date().getFullYear();
 
-const instNameApp = document.getElementById("instNameApp");
-const userNameEl  = document.getElementById("userName");
-const userRoleEl  = document.getElementById("userRole");
-const anioEl      = document.getElementById("anioLectivo");
-const periodosEl  = document.getElementById("periodos");
-
-const btnLogout   = document.getElementById("btnLogout");
+const instNameEl = document.getElementById("instName");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
+const anioLectivoEl = document.getElementById("anioLectivo");
+const periodosEl = document.getElementById("periodos");
 const modulesGrid = document.getElementById("modulesGrid");
+const btnLogout = document.getElementById("btnLogout");
 
-const viewCalificaciones = document.getElementById("viewCalificaciones");
-const viewPlanillas      = document.getElementById("viewPlanillas");
-const viewBoletines      = document.getElementById("viewBoletines");
-const viewSistemas       = document.getElementById("viewSistemas");
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+});
 
-const btnBack1 = document.getElementById("btnBack1");
-const btnBack2 = document.getElementById("btnBack2");
-const btnBack3 = document.getElementById("btnBack3");
-const btnBack4 = document.getElementById("btnBack4");
-
-/* =========================
-   Helpers
-   ========================= */
-function normRole(role){
-  return (role || "").toString().trim().toLowerCase();
+function normalizeRole(r){
+  const role = (r || "").toString().trim().toLowerCase();
+  if(role === "docente") return "docente";
+  if(role === "secretaria" || role === "secretaría") return "secretaria";
+  if(role === "rectoria" || role === "rectoría" || role === "rector" || role === "rectora") return "rectoria";
+  if(role === "soporte" || role === "sistemas" || role === "admin") return "soporte";
+  if(role === "coordinador" || role === "coordinador académico") return "coordinador";
+  return role || "sin-rol";
 }
 
-function hideAllViews(){
-  viewCalificaciones.classList.add("hidden");
-  viewPlanillas.classList.add("hidden");
-  viewBoletines.classList.add("hidden");
-  viewSistemas.classList.add("hidden");
-}
-function showView(view){
-  hideAllViews();
-  view.classList.remove("hidden");
-  // scroll suave hacia abajo
-  view.scrollIntoView({ behavior:"smooth", block:"start" });
-}
-
-btnBack1.addEventListener("click", hideAllViews);
-btnBack2.addEventListener("click", hideAllViews);
-btnBack3.addEventListener("click", hideAllViews);
-btnBack4.addEventListener("click", hideAllViews);
-
-async function getProfileByUidOrEmail(uid, email){
-  // 1) por uid
-  const snapUid = await getDoc(doc(db, "usuarios", uid));
-  if(snapUid.exists()){
-    return { id: uid, data: snapUid.data() };
-  }
-
-  // 2) por correo
-  const q = query(
-    collection(db, "usuarios"),
-    where("correo", "==", email),
-    limit(1)
-  );
-  const qs = await getDocs(q);
-  if(!qs.empty){
-    const d = qs.docs[0];
-    return { id: d.id, data: d.data() };
-  }
-
-  return null;
+function moduleButton(tag, name, desc, onClick){
+  const btn = document.createElement("button");
+  btn.className = "moduleBtn";
+  btn.type = "button";
+  btn.innerHTML = `
+    <span class="moduleTag">${tag}</span>
+    <div class="moduleName">${name}</div>
+    <p class="moduleDesc">${desc}</p>
+  `;
+  btn.addEventListener("click", onClick);
+  return btn;
 }
 
-async function loadConfigGeneral(){
-  const snap = await getDoc(doc(db, "config", "general"));
-  if(snap.exists()){
-    const c = snap.data();
-    if(c?.institucion) instNameApp.textContent = String(c.institucion).toUpperCase();
-    if(c?.añoLectivoActual) anioEl.textContent = c.añoLectivoActual;
-    else if(c?.anioLectivoActual) anioEl.textContent = c.anioLectivoActual;
-    if(c?.periodos) periodosEl.textContent = c.periodos;
-  }
-}
-
-/* =========================
-   Render módulos tipo botón
-   ========================= */
 function renderModulesByRole(role){
-  const roleL = normRole(role);
-
-  const canCalificaciones = ["docente","secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
-  const canPlanillas     = ["docente","secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
-  const canBoletines     = ["secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
-  const canSistemas      = ["soporte","admin"].includes(roleL);
-
-  const modules = [
-    { title:"Calificaciones", desc:"Ingresar, modificar y consultar calificaciones.", badge:"Módulo", icon:"C", enabled:canCalificaciones, go:()=>showView(viewCalificaciones) },
-    { title:"Planillas",      desc:"Sábanas y listados de estudiantes por curso.",     badge:"Módulo", icon:"P", enabled:canPlanillas,     go:()=>showView(viewPlanillas) },
-    { title:"Boletines",      desc:"Generación de boletines en PDF (roles autorizados).", badge:"Académico", icon:"B", enabled:canBoletines, go:()=>showView(viewBoletines) },
-    { title:"Sistemas",       desc:"Usuarios, permisos y autorizaciones (admin).",     badge:"Admin", icon:"S", enabled:canSistemas,       go:()=>showView(viewSistemas) },
-  ];
-
   modulesGrid.innerHTML = "";
 
-  for(const m of modules){
-    const btn = document.createElement("button");
-    btn.className = "module-btn";
-    btn.disabled = !m.enabled;
-
-    btn.innerHTML = `
-      <div class="module-left">
-        <div class="module-icon">${m.icon}</div>
-        <div class="module-text">
-          <h3>${m.title}</h3>
-          <p>${m.desc}</p>
-        </div>
-      </div>
-      <div class="module-right">
-        <span class="badge">${m.enabled ? m.badge : "Sin permiso"}</span>
-        <span class="arrow">➜</span>
-      </div>
-    `;
-
-    btn.addEventListener("click", () => {
-      if(!m.enabled) return;
-      m.go();
-    });
-
-    modulesGrid.appendChild(btn);
+  if(role === "docente"){
+    modulesGrid.appendChild(moduleButton(
+      "Docente",
+      "Registro de notas",
+      "Selecciona curso, período y materia. Registra notas y guarda en Firestore.",
+      () => alert("Siguiente paso: creamos la pantalla registro-notas.html")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Docente",
+      "Listados por curso",
+      "Descarga listado de estudiantes (plantilla) por curso para planilla manual.",
+      () => alert("Siguiente paso: generamos listado por curso (CSV/Excel/PDF)")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Docente",
+      "Consolidado",
+      "Descarga consolidado (CSV) del curso/período/materia seleccionados.",
+      () => alert("Siguiente paso: consolidado por curso/periodo/materia")
+    ));
+    return;
   }
+
+  if(role === "secretaria"){
+    modulesGrid.appendChild(moduleButton(
+      "Secretaría",
+      "Estudiantes",
+      "Registrar estudiantes individual o masivo (Excel/CSV).",
+      () => alert("Siguiente paso: módulo de estudiantes (carga masiva)")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Secretaría",
+      "Cursos y grados",
+      "Crear/editar cursos, asignar director(a) de grupo y jornada.",
+      () => alert("Siguiente paso: módulo cursos/grados")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Secretaría",
+      "Planillas y sábanas",
+      "Generar planillas y revisar sábanas para boletines.",
+      () => alert("Siguiente paso: planillas/sábanas")
+    ));
+    return;
+  }
+
+  if(role === "rectoria"){
+    modulesGrid.appendChild(moduleButton(
+      "Rectoría",
+      "Reportes",
+      "Consultar avance y reportes generales por curso/periodo.",
+      () => alert("Siguiente paso: reportes rectoría")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Rectoría",
+      "Autorizaciones",
+      "Autorizar solicitudes de modificación de notas (previa petición).",
+      () => alert("Siguiente paso: autorizaciones")
+    ));
+    return;
+  }
+
+  if(role === "soporte"){
+    modulesGrid.appendChild(moduleButton(
+      "Soporte",
+      "Usuarios",
+      "Crear/modificar usuarios y asignar roles/permisos.",
+      () => alert("Siguiente paso: módulo de usuarios (admin)")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Soporte",
+      "Solicitudes",
+      "Aprobar solicitudes de modificación (con autorización rectoría).",
+      () => alert("Siguiente paso: solicitudes")
+    ));
+    modulesGrid.appendChild(moduleButton(
+      "Soporte",
+      "Configuración",
+      "Año lectivo, períodos, parámetros del sistema.",
+      () => alert("Siguiente paso: configuración")
+    ));
+    return;
+  }
+
+  modulesGrid.appendChild(moduleButton(
+    "Sistema",
+    "Sin módulos",
+    "Tu rol no tiene módulos asignados. Contacta a soporte.",
+    () => {}
+  ));
 }
 
 /* =========================
-   Auth guard
+   Load config + profile
    ========================= */
+async function loadConfig(){
+  try{
+    const snap = await getDoc(doc(db, "config", "general"));
+    if(snap.exists()){
+      const c = snap.data();
+      if(c?.institucion) instNameEl.textContent = String(c.institucion).toUpperCase();
+      if(c?.añoLectivoActual) anioLectivoEl.textContent = c.añoLectivoActual;
+      if(c?.periodos) periodosEl.textContent = c.periodos;
+    }
+  }catch(e){
+    // silencioso
+  }
+}
+
+async function clearMustChangePasswordIfNeeded(uid){
+  try{
+    const flag = localStorage.getItem("justChangedPassword");
+    if(flag === "1"){
+      await updateDoc(doc(db, "usuarios", uid), { mustChangePassword: false });
+      localStorage.removeItem("justChangedPassword");
+    }
+  }catch(e){
+    // silencioso
+  }
+}
+
 onAuthStateChanged(auth, async (user) => {
   if(!user){
     window.location.href = "index.html";
     return;
   }
 
-  try{
-    await loadConfigGeneral();
+  await loadConfig();
 
-    const email = user.email || "";
-    const profileIdFromSession = sessionStorage.getItem("profileDocId");
+  const uid = user.uid;
 
-    let profilePack = null;
+  await clearMustChangePasswordIfNeeded(uid);
 
-    // Si ya guardamos el docId, intentamos con ese primero
-    if(profileIdFromSession){
-      const snap = await getDoc(doc(db, "usuarios", profileIdFromSession));
-      if(snap.exists()){
-        profilePack = { id: profileIdFromSession, data: snap.data() };
-      }
-    }
-
-    // si no, buscamos por uid/correo
-    if(!profilePack){
-      profilePack = await getProfileByUidOrEmail(user.uid, email);
-      if(profilePack) sessionStorage.setItem("profileDocId", profilePack.id);
-    }
-
-    if(!profilePack){
-      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-      await signOut(auth);
-      window.location.href = "index.html";
-      return;
-    }
-
-    const profile = profilePack.data;
-
-    if(profile.activo !== true){
-      alert("Usuario inactivo. Contacta a soporte.");
-      await signOut(auth);
-      window.location.href = "index.html";
-      return;
-    }
-
-    userNameEl.textContent = profile.nombre || profile.Nombre || "Usuario";
-    userRoleEl.textContent = profile.rol || profile.Rol || "Sin rol";
-
-    // Si venía de cambio obligatorio
-    if(localStorage.getItem("justChangedPassword") === "1"){
-      localStorage.removeItem("justChangedPassword");
-      try{
-        await updateDoc(doc(db, "usuarios", profilePack.id), { mustChangePassword:false });
-      }catch(e){ /* si falla, no bloquea */ }
-    }
-
-    renderModulesByRole(profile.rol || profile.Rol);
-
-  }catch(err){
-    console.error(err);
-    alert("Error cargando el panel. Revisa tu conexión o contacta a soporte.");
+  const userSnap = await getDoc(doc(db, "usuarios", uid));
+  if(!userSnap.exists()){
+    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
   }
-});
 
-/* =========================
-   Logout
-   ========================= */
-btnLogout.addEventListener("click", async () => {
-  await signOut(auth);
-  window.location.href = "index.html";
+  const profile = userSnap.data();
+
+  if(profile.activo !== true){
+    alert("Usuario inactivo. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  const nombre = profile.nombre || profile.Nombre || user.email || "Usuario";
+  const role = normalizeRole(profile.rol || profile.Rol || "");
+
+  userNameEl.textContent = nombre;
+  userRoleEl.textContent = role;
+
+  renderModulesByRole(role);
 });

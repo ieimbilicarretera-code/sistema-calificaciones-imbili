@@ -2,99 +2,94 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Docente • Registro de notas</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
+
   <div class="shell">
-    <div class="card app-card">
-      <!-- Header -->
-      <div class="app-header">
+    <div class="card glass">
+      <div class="topbar">
         <div class="brand">
-          <div class="brand-left">
-            <img id="logoIE" src="logo.png" alt="IE Imbilí" class="logo"/>
-          </div>
-          <div class="brand-right">
+          <img src="logo.png" alt="IE Imbilí" class="logo" />
+          <div>
             <div class="inst" id="instName">Institución Educativa Imbilí Carretera</div>
-            <div class="meta">
-              Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">docente</b>
-            </div>
+            <div class="sub">Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b></div>
           </div>
         </div>
 
-        <div class="top-badges">
+        <div class="meta">
           <span class="pill">Año lectivo: <b id="anioLectivo">...</b></span>
           <span class="pill">Periodos: <b id="periodos">4</b></span>
         </div>
       </div>
 
-      <!-- Subheader -->
-      <div class="subbar">
-        <div>
-          <div class="h2">Docente • Registro de notas</div>
-          <div class="muted">Elige curso, período y materia. Agrega actividades (nota + observación) y mira la definitiva en tiempo real.</div>
-        </div>
-        <div>
-          <button class="btn btn-ghost" id="btnVolver">Volver</button>
-        </div>
-      </div>
-
-      <!-- Filtros -->
       <div class="panel">
-        <div class="panel-title">Filtros</div>
+        <div class="panelHead">
+          <div>
+            <h2 style="margin:0">Docente • Registro de notas</h2>
+            <p class="muted" style="margin:6px 0 0">
+              Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.
+            </p>
+          </div>
+          <button class="btn" id="btnBack">Volver</button>
+        </div>
 
-        <div class="grid-2">
-          <div class="field">
-            <label>Curso *</label>
-            <select id="selCurso"></select>
+        <div class="box">
+          <h3 style="margin:0 0 14px">Filtros</h3>
+
+          <div class="grid2">
+            <div>
+              <label>Curso *</label>
+              <select id="slCurso"></select>
+            </div>
+
+            <div>
+              <label>Período *</label>
+              <select id="slPeriodo">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
           </div>
 
-          <div class="field">
-            <label>Período *</label>
-            <select id="selPeriodo">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
+          <div style="margin-top:12px">
+            <label>Materia *</label>
+            <select id="slMateria">
+              <option value="">-- Selecciona --</option>
             </select>
           </div>
+
+          <div class="actionsRow">
+            <button class="btn primary" id="btnCargar">Cargar estudiantes</button>
+            <button class="btn" id="btnGuardar">Guardar notas</button>
+            <button class="btn" id="btnAddActividad">+ Agregar actividad</button>
+          </div>
+
+          <div class="msg ok" id="msgOk" style="display:none"></div>
+          <div class="msg warn" id="msgWarn" style="display:none"></div>
+          <div class="msg err" id="msgErr" style="display:none"></div>
+
+          <p class="muted" style="margin:12px 0 0">
+            Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de las notas diligenciadas.
+          </p>
         </div>
 
-        <div class="field">
-          <label>Materia *</label>
-          <select id="selMateria">
-            <option value="">Selecciona un curso primero...</option>
-          </select>
+        <div class="box" style="margin-top:16px">
+          <div class="tableHead">
+            <h3 style="margin:0">Estudiantes del curso</h3>
+            <div class="muted"><span id="countEst">0</span> estudiantes</div>
+          </div>
+
+          <div id="tableWrap" class="tableWrap">
+            <div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
+          </div>
         </div>
 
-        <div class="btnrow">
-          <button class="btn" id="btnCargar">Cargar estudiantes</button>
-          <button class="btn btn-secondary" id="btnGuardar">Guardar notas</button>
-          <button class="btn btn-ghost" id="btnAgregarActividad">+ Agregar actividad</button>
-        </div>
-
-        <div class="muted" style="margin-top:10px">
-          Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de las notas diligenciadas.
-        </div>
-
-        <div id="msg" class="msg" style="display:none"></div>
       </div>
-
-      <!-- Contenido -->
-      <div class="panel" style="margin-top:14px">
-        <div class="panel-title">Estudiantes del curso</div>
-
-        <div class="row-between muted" style="margin:6px 0 12px">
-          <div id="infoFiltro">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
-          <div><b id="countEst">0</b> estudiantes</div>
-        </div>
-
-        <div id="studentsWrap" class="students-wrap"></div>
-      </div>
-
-      <div class="footer muted">© <span id="year"></span> IE Imbilí Carretera</div>
     </div>
   </div>
 

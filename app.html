@@ -177,78 +177,86 @@
         <footer class="foot">© <span id="year2"></span> IE Imbilí Carretera</footer>
       </section>
 
-      <!-- DOCENTE -->
-      <section id="viewDocente" class="view">
-        <div class="panelHead">
-          <div>
-            <h2>Docente • Registro de notas</h2>
-            <p class="muted">Elige curso, período y materia. Verás estudiantes cargados y podrás guardar notas.</p>
-          </div>
-          <button class="btn" data-back>Volver</button>
-        </div>
+<!-- DOCENTE -->
+<section id="viewDocente" class="view">
+  <div class="panelHead">
+    <div>
+      <h2>Docente • Registro de notas</h2>
+      <p class="muted">Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.</p>
+    </div>
+    <button class="btn" data-back>Volver</button>
+  </div>
 
-        <div class="box" style="margin-top:14px;">
-          <h3>Filtros</h3>
+  <div class="box" style="margin-top:14px;">
+    <h3>Filtros</h3>
 
-          <div class="formGrid">
-            <label>
-              Curso *
-              <select id="dcCurso">
-                <option value="">-- Selecciona --</option>
-              </select>
-            </label>
+    <div class="formGrid">
+      <label>
+        Curso *
+        <select id="dcCurso">
+          <option value="">-- Selecciona --</option>
+        </select>
+      </label>
 
-            <label>
-              Período *
-              <select id="dcPeriodo">
-                <option value="">-- Selecciona --</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-              </select>
-            </label>
+      <label>
+        Período *
+        <select id="dcPeriodo">
+          <option value="">-- Selecciona --</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </label>
 
-            <label class="span2">
-              Materia *
-              <input id="dcMateria" type="text" placeholder="Ej: Matemáticas" />
-            </label>
-          </div>
+      <label class="span2">
+        Materia *
+        <select id="dcMateriaSelect">
+          <option value="">-- Selecciona curso primero --</option>
+        </select>
+      </label>
+    </div>
 
-          <div class="row">
-            <button id="btnCargarEstudiantes" class="btn primary">Cargar estudiantes</button>
-            <button id="btnGuardarNotas" class="btn">Guardar notas</button>
-          </div>
+    <div class="row">
+      <button id="btnCargarEstudiantes" class="btn primary">Cargar estudiantes</button>
+      <button id="btnGuardarNotas" class="btn">Guardar notas</button>
+      <button id="btnAddActividad" class="btn">+ Agregar actividad</button>
+    </div>
 
-          <div id="msgDocente" class="msg" style="display:none;"></div>
-        </div>
+    <div class="note">
+      <b>Actividades:</b> cada estudiante tendrá varias actividades (nota + observación).  
+      La <b>definitiva</b> se calcula como el promedio de las notas diligenciadas.
+    </div>
 
-        <div class="box" style="margin-top:14px;">
-          <div class="row" style="justify-content:space-between;">
-            <h3 style="margin:0;">Estudiantes del curso</h3>
-            <div class="muted small" id="dcInfo">0 estudiantes</div>
-          </div>
+    <div id="msgDocente" class="msg" style="display:none;"></div>
+  </div>
 
-          <div class="tableWrap">
-            <table class="tbl">
-              <thead>
-                <tr>
-                  <th style="width:140px;">Documento</th>
-                  <th>Nombre</th>
-                  <th style="width:130px;">Nota (0-5)</th>
-                </tr>
-              </thead>
-              <tbody id="dcTbody">
-                <tr><td colspan="3" class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+  <div class="box" style="margin-top:14px;">
+    <div class="row" style="justify-content:space-between;">
+      <h3 style="margin:0;">Estudiantes del curso</h3>
+      <div class="muted small" id="dcInfo">0 estudiantes</div>
+    </div>
 
-        <footer class="foot">© <span id="year3"></span> IE Imbilí Carretera</footer>
-      </section>
+    <div class="tableWrap">
+      <table class="tbl tblWide">
+        <thead id="dcThead">
+          <tr>
+            <th style="width:140px;">Documento</th>
+            <th style="min-width:220px;">Nombre</th>
+            <th style="width:110px;">Definitiva</th>
+            <!-- Aquí van dinámicamente las columnas de actividades -->
+          </tr>
+        </thead>
+        <tbody id="dcTbody">
+          <tr><td colspan="4" class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-    </section>
+  <footer class="foot">© <span id="year3"></span> IE Imbilí Carretera</footer>
+</section>
+
   </main>
 
   <script>

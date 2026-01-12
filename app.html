@@ -4,455 +4,73 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Sistema de Calificaciones - IE Imbilí Carretera</title>
-
-  <style>
-    :root{
-      --bg1:#050816;
-      --bg2:#0b1b36;
-      --card:rgba(10,20,40,.55);
-      --border:rgba(255,255,255,.12);
-      --text:#eaf0ff;
-      --muted:rgba(234,240,255,.75);
-      --accent:#6d5efc;
-      --accent2:#00d4ff;
-      --danger:#ff4d6d;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% 10%, rgba(109,94,252,.22), transparent 55%),
-        radial-gradient(900px 520px at 85% 30%, rgba(0,212,255,.16), transparent 55%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:28px 14px;
-    }
-    .wrap{
-      width:min(1060px, 100%);
-      border:1px solid var(--border);
-      background:var(--card);
-      backdrop-filter: blur(14px);
-      border-radius:18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-      overflow:hidden;
-    }
-    .top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      padding:22px 22px 14px 22px;
-      border-bottom:1px solid var(--border);
-    }
-    .brand{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      min-width: 260px;
-    }
-    .logo{
-      width:44px;height:44px;
-      border-radius:14px;
-      display:grid;
-      place-items:center;
-      font-weight:800;
-      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(0,212,255,.70));
-      color:#071022;
-      box-shadow: 0 12px 30px rgba(109,94,252,.25);
-      user-select:none;
-    }
-    .titles h1{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.2px;
-      line-height:1.2;
-    }
-    .titles p{
-      margin:6px 0 0 0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .kpi{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
-    .pill{
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.15);
-      border-radius:999px;
-      padding:8px 12px;
-      font-size:12.5px;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-    .pill b{color:var(--text)}
-    .content{
-      padding:18px 22px 22px;
-    }
-    .card{
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:16px;
-      background: rgba(0,0,0,.12);
-    }
-    .card h2{
-      margin:0 0 6px 0;
-      font-size:15px;
-      letter-spacing:.2px;
-    }
-    .card p{
-      margin:0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      border:none;
-      cursor:pointer;
-      padding:11px 14px;
-      border-radius:12px;
-      font-weight:700;
-      color:#fff;
-      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(109,94,252,.70));
-      box-shadow: 0 10px 24px rgba(109,94,252,.22);
-    }
-    .btn:hover{ filter:brightness(1.05); }
-    .btn:disabled{
-      cursor:not-allowed;
-      filter:saturate(.4);
-      opacity:.7;
-    }
-    .btn-danger{
-      background: linear-gradient(135deg, rgba(255,77,109,.95), rgba(255,77,109,.65));
-      box-shadow: 0 10px 24px rgba(255,77,109,.18);
-    }
-    .btn-ghost{
-      background: transparent;
-      border: 1px solid var(--border);
-      box-shadow:none;
-      color: var(--text);
-    }
-    .sep{
-      height:1px;
-      background: var(--border);
-      margin:12px 0;
-    }
-    .hint{
-      margin-top:10px;
-      text-align:center;
-      font-size:12px;
-      color:rgba(234,240,255,.62);
-    }
-
-/* ====== Menú tipo BOTONES ====== */
-.modules-grid{
-  margin-top:14px;
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap:14px;
-}
-@media (max-width: 720px){
-  .modules-grid{ grid-template-columns: 1fr; }
-}
-
-.module-btn{
-  width:100%;
-  text-align:left;
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:16px 16px;
-  background:
-    radial-gradient(900px 260px at 10% 0%, rgba(109,94,252,.22), transparent 55%),
-    radial-gradient(900px 260px at 90% 30%, rgba(0,212,255,.14), transparent 55%),
-    rgba(0,0,0,.12);
-  color: var(--text);
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  transition: transform .10s ease, filter .10s ease;
-  min-height: 92px;
-}
-
-.module-btn:hover{ transform: translateY(-1px); filter: brightness(1.05); }
-.module-btn:active{ transform: translateY(0px); }
-
-.module-btn:disabled{
-  cursor:not-allowed;
-  filter:saturate(.4);
-  opacity:.65;
-}
-
-.module-left{
-  display:flex;
-  align-items:flex-start;
-  gap:12px;
-  flex: 1;
-}
-
-.module-icon{
-  width:44px;
-  height:44px;
-  border-radius:14px;
-  display:grid;
-  place-items:center;
-  font-weight:900;
-  color:#071022;
-  background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(0,212,255,.70));
-  box-shadow: 0 10px 24px rgba(109,94,252,.22);
-  user-select:none;
-}
-
-.module-text h3{
-  margin:0;
-  font-size:16px;
-  letter-spacing:.2px;
-}
-.module-text p{
-  margin:6px 0 0 0;
-  color: var(--muted);
-  font-size:13px;
-  line-height:1.35;
-}
-
-.module-right{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  white-space:nowrap;
-}
-
-.badge{
-  border:1px solid var(--border);
-  background: rgba(0,0,0,.18);
-  color: var(--muted);
-  font-size:12px;
-  padding:6px 10px;
-  border-radius:999px;
-}
-
-.arrow{
-  font-weight:900;
-  opacity:.9;
-}
-
-    }
-    @media (max-width: 980px){
-      .modules-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 640px){
-      .modules-grid{ grid-template-columns: 1fr; }
-    }
-    .module-tile{
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:16px;
-      background: radial-gradient(700px 220px at 15% 0%, rgba(109,94,252,.20), transparent 55%),
-                  rgba(0,0,0,.10);
-      overflow:hidden;
-      min-height: 135px;
-    }
-    .module-tile .tag{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      font-size:12px;
-      padding:5px 10px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.18);
-      color: var(--muted);
-    }
-    .module-tile h3{
-      margin:10px 0 6px 0;
-      font-size:16px;
-      letter-spacing:.2px;
-    }
-    .module-tile p{
-      margin:0 0 14px 0;
-      color: var(--muted);
-      font-size:13px;
-      line-height:1.35;
-    }
-    .module-tile .actions{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-
-    /* ====== Vistas ====== */
-    .view{ display:none; }
-    .view.active{ display:block; }
-
-    .subgrid{
-      margin-top:12px;
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap:12px;
-    }
-    @media (max-width: 860px){
-      .subgrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 560px){
-      .subgrid{ grid-template-columns: 1fr; }
-    }
-    .subcard{
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:14px;
-      background: rgba(0,0,0,.10);
-    }
-    .subcard h4{ margin:0 0 6px 0; font-size:14px; }
-    .subcard p{ margin:0 0 12px 0; color:var(--muted); font-size:13px; }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="logo">IE</div>
-        <div class="titles">
-          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-          <p>
-            Bienvenido(a): <b id="userName">...</b>
-            — Rol: <b id="userRole">...</b>
-          </p>
-        </div>
-      </div>
+  <div class="page">
+    <div class="card">
 
-      <div class="kpi">
-        <div class="pill">Año lectivo: <b id="anioLectivo">...</b></div>
-        <div class="pill">Períodos: <b id="periodos">...</b></div>
-      </div>
-    </div>
-
-    <div class="content">
-      <div class="card">
-        <div class="row">
+      <!-- Header -->
+      <div class="app-top">
+        <div class="brand" style="margin:0;">
+          <img src="logo-ie.png" class="logo-ie" alt="IE Imbilí Carretera">
           <div>
-            <h2>Panel principal</h2>
-            <p>Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.</p>
+            <h1 id="instNameApp">INSTITUCIÓN EDUCATIVA IMBILÍ CARRETERA</h1>
+            <p>Bienvenido(a): <strong id="userName">...</strong> — Rol: <span id="userRole">...</span></p>
           </div>
-          <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
         </div>
-        <div class="sep"></div>
-        <p class="hint">Consejo: si un módulo no aparece, es por permisos/rol.</p>
-      </div>
 
-      <!-- Vista: Selección del módulo -->
-      <div id="viewMenu" class="view active">
-        <div class="modules-grid" id="modulesGrid"></div>
-      </div>
-
-      <!-- Vista: Calificaciones -->
-      <div id="viewCalificaciones" class="view">
-        <div class="card">
-          <div class="row">
-            <div>
-              <h2>Módulo Calificaciones</h2>
-              <p>Ingresar / Modificar / Consultar (con botón Regresar).</p>
-            </div>
-            <button class="btn btn-ghost" data-back>← Regresar</button>
-          </div>
-
-          <div class="subgrid">
-            <div class="subcard">
-              <h4>Ingresar calificaciones</h4>
-              <p>Selecciona curso, período y materia, luego registra las notas.</p>
-              <button class="btn" id="btnOpenIngresar">Abrir</button>
-            </div>
-
-            <div class="subcard">
-              <h4>Modificar calificaciones</h4>
-              <p>Modificación controlada (requiere autorización).</p>
-              <button class="btn" id="btnOpenModificar">Abrir</button>
-            </div>
-
-            <div class="subcard">
-              <h4>Consultar calificaciones</h4>
-              <p>Consulta notas por curso/estudiante.</p>
-              <button class="btn" id="btnOpenConsultar">Abrir</button>
-            </div>
-          </div>
-
-          <p class="hint">Siguiente paso: implementamos formularios y guardado en Firestore.</p>
+        <div class="pills">
+          <div class="pill">Año lectivo: <strong id="anioLectivo">...</strong></div>
+          <div class="pill">Períodos: <strong id="periodos">...</strong></div>
         </div>
       </div>
 
-      <!-- Vista: Planillas -->
-      <div id="viewPlanillas" class="view">
-        <div class="card">
-          <div class="row">
-            <div>
-              <h2>Planillas</h2>
-              <p>Generar sábanas y descargar listados.</p>
-            </div>
-            <button class="btn btn-ghost" data-back>← Regresar</button>
+      <!-- Panel principal -->
+      <div class="section">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+          <div>
+            <h2 style="margin:0;">Panel principal</h2>
+            <p class="muted">En esta pantalla aparecerán los módulos según el rol del usuario (Docente, Secretaría, Rectoría, Soporte).</p>
           </div>
-
-          <div class="subgrid">
-            <div class="subcard">
-              <h4>Sábanas</h4>
-              <p>Descarga la sábana del curso (por período).</p>
-              <button class="btn" id="btnOpenSabanas">Abrir</button>
-            </div>
-
-            <div class="subcard">
-              <h4>Listado de estudiantes</h4>
-              <p>Descarga listado/plantilla del curso para planilla manual.</p>
-              <button class="btn" id="btnOpenListado">Abrir</button>
-            </div>
-          </div>
-
-          <p class="hint">Siguiente paso: exportación a Excel/PDF.</p>
+          <button class="btn danger" id="btnLogout">Cerrar sesión</button>
         </div>
+        <p class="muted" style="margin-top:10px; font-size:12px;">Consejo: si un módulo no aparece, es por permisos/rol.</p>
       </div>
 
-      <!-- Vista: Boletines -->
-      <div id="viewBoletines" class="view">
-        <div class="card">
-          <div class="row">
-            <div>
-              <h2>Boletines</h2>
-              <p>Generación de boletines por curso/estudiante (solo roles autorizados).</p>
-            </div>
-            <button class="btn btn-ghost" data-back>← Regresar</button>
-          </div>
-
-          <p class="hint">Lo activamos cuando esté listo el cálculo y el formato del boletín.</p>
-        </div>
+      <!-- Módulos -->
+      <div class="section">
+        <h2>Módulos</h2>
+        <div id="modulesGrid" class="modules-grid"></div>
       </div>
 
-      <!-- Vista: Sistemas -->
-      <div id="viewSistemas" class="view">
-        <div class="card">
-          <div class="row">
-            <div>
-              <h2>Sistemas (Soporte)</h2>
-              <p>Usuarios, permisos y autorizaciones (solo admin/soporte).</p>
-            </div>
-            <button class="btn btn-ghost" data-back>← Regresar</button>
-          </div>
+      <!-- Vistas (placeholders por ahora) -->
+      <div class="section hidden" id="viewCalificaciones">
+        <h2>Calificaciones</h2>
+        <p class="muted">Aquí construiremos el registro de notas (curso, periodo, materia, estudiantes y guardado en Firestore).</p>
+        <button class="btn secondary" id="btnBack1">Volver</button>
+      </div>
 
-          <p class="hint">Siguiente paso: crear/editar usuarios, asignar roles y aprobar solicitudes.</p>
-        </div>
+      <div class="section hidden" id="viewPlanillas">
+        <h2>Planillas / Listados</h2>
+        <p class="muted">Aquí construiremos descarga de listados por curso y planillas vacías.</p>
+        <button class="btn secondary" id="btnBack2">Volver</button>
+      </div>
+
+      <div class="section hidden" id="viewBoletines">
+        <h2>Boletines</h2>
+        <p class="muted">Aquí construiremos generación de boletines en PDF (con logo).</p>
+        <button class="btn secondary" id="btnBack3">Volver</button>
+      </div>
+
+      <div class="section hidden" id="viewSistemas">
+        <h2>Sistemas (Soporte)</h2>
+        <p class="muted">Aquí construiremos gestión de usuarios, permisos y autorizaciones.</p>
+        <button class="btn secondary" id="btnBack4">Volver</button>
+      </div>
+
+      <div class="footer">
+        © <span id="yearApp"></span> IE Imbilí Carretera
       </div>
 
     </div>

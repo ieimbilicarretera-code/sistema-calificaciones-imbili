@@ -337,3 +337,99 @@ input, select{
   color:var(--muted);
   font-size:12px;
 }
+
+
+/* ===== Docente: estudiantes + actividades ===== */
+.students-list{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.student-card{
+  border:1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.student-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  padding-bottom:10px;
+  margin-bottom:12px;
+}
+
+.student-name{
+  font-size:16px;
+  font-weight:700;
+}
+
+.student-meta{
+  font-size:12px;
+  color: var(--muted);
+  margin-top:3px;
+}
+
+.student-def{
+  text-align:right;
+  min-width:120px;
+}
+
+.def-num{
+  font-size:20px;
+  font-weight:800;
+  margin-top:2px;
+}
+
+.acts-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:12px;
+}
+
+.act-box{
+  border:1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.15);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.act-title{
+  font-weight:800;
+  margin-bottom:8px;
+}
+
+.act-label{
+  display:block;
+  font-size:12px;
+  color: var(--muted);
+  margin-top:8px;
+  margin-bottom:6px;
+}
+
+.act-input{
+  width:100%;
+  padding:10px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  outline:none;
+}
+
+.act-obs{
+  width:100%;
+  padding:10px;
+  border-radius: 12px;
+  border:1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  outline:none;
+  resize: vertical;
+}
+
+.req{ color:#ff6b6b; font-weight:700; }

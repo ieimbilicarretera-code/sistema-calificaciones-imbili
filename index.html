@@ -1,87 +1,112 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IE Imbilí Carretera | Sistema de Calificaciones</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>IE Imbilí Carretera | Ingreso</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
-
 <body>
-  <div class="bg"></div>
 
-  <main class="wrap">
-    <section class="card">
-      <header class="brand">
-        <img class="logo" src="logo.png" alt="IE Imbilí Carretera" onerror="this.style.display='none'">
-        <div class="brandText">
+  <div class="shell">
+    <div class="header">
+      <div class="brand">
+        <img class="logo-img" src="assets/logo.png" alt="IE Imbilí Carretera">
+        <div>
           <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-          <p class="sub">Sistema de calificaciones</p>
+          <p>Sistema de calificaciones</p>
         </div>
-      </header>
+      </div>
+      <div class="badges">
+        <div class="badge">© <span id="year"></span> IE Imbilí Carretera</div>
+      </div>
+    </div>
+
+    <div class="main">
 
       <!-- LOGIN -->
-      <div id="loginView">
-        <h2 class="sectionTitle">Ingreso</h2>
+      <div id="loginView" class="card">
+        <div class="row">
+          <div>
+            <div style="font-weight:800; font-size:18px;">Ingreso</div>
+            <div class="small">Accede con tu correo institucional.</div>
+          </div>
+        </div>
 
-        <label class="field">
-          <span>Correo</span>
-          <input id="email" type="email" placeholder="usuario@correo.com" autocomplete="username">
-        </label>
+        <hr class="sep"/>
 
-        <label class="field">
-          <span>Contraseña</span>
-          <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
-        </label>
+        <div style="display:grid; gap:10px;">
+          <div>
+            <div class="small" style="margin-bottom:6px;">Correo</div>
+            <input id="email" type="email" placeholder="usuario@correo.com" autocomplete="username"/>
+          </div>
 
-        <button id="btnLogin" class="btn primary">Ingresar</button>
+          <div>
+            <div class="small" style="margin-bottom:6px;">Contraseña</div>
+            <input id="password" type="password" placeholder="••••••••" autocomplete="current-password"/>
+          </div>
 
-        <button id="linkForgot" class="link">Olvidé mi contraseña</button>
+          <button id="btnLogin" class="btn">Ingresar</button>
+
+          <div class="row" style="justify-content:flex-start;">
+            <a class="link" href="#" id="linkForgot">Olvidé mi contraseña</a>
+          </div>
+        </div>
       </div>
 
       <!-- OLVIDÉ CONTRASEÑA -->
-      <div id="forgotView" class="hidden">
-        <h2 class="sectionTitle">Recuperar contraseña</h2>
-        <p class="hint">
-          Escribe tu correo institucional. Te enviaremos un enlace para restablecer tu contraseña.
-        </p>
+      <div id="forgotView" class="card hidden">
+        <div style="font-weight:800; font-size:18px;">Recuperar contraseña</div>
+        <div class="small">Te enviaremos un enlace a tu correo para restablecer tu contraseña.</div>
 
-        <label class="field">
-          <span>Correo</span>
-          <input id="forgotEmail" type="email" placeholder="usuario@correo.com" autocomplete="email">
-        </label>
+        <hr class="sep"/>
 
-        <button id="btnSendReset" class="btn primary">Enviar enlace</button>
-        <button id="btnBackLogin" class="btn ghost">Volver</button>
+        <div style="display:grid; gap:10px;">
+          <div>
+            <div class="small" style="margin-bottom:6px;">Correo</div>
+            <input id="forgotEmail" type="email" placeholder="usuario@correo.com" autocomplete="username"/>
+          </div>
 
-        <div id="forgotMsg" class="info"></div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnSendReset" class="btn">Enviar</button>
+            <button id="btnBackLogin" class="btn-ghost">Volver</button>
+          </div>
+
+          <div id="forgotMsg" class="info hidden"></div>
+        </div>
       </div>
 
       <!-- CAMBIO OBLIGATORIO -->
-      <div id="forceChangeView" class="hidden">
-        <h2 class="sectionTitle">Cambio de contraseña</h2>
-        <p class="hint">Por seguridad, debes establecer una nueva contraseña para continuar.</p>
+      <div id="forceChangeView" class="card hidden">
+        <div style="font-weight:800; font-size:18px;">Cambio de contraseña</div>
+        <div class="small">Debes cambiar tu contraseña temporal para continuar.</div>
 
-        <label class="field">
-          <span>Nueva contraseña</span>
-          <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
-        </label>
+        <hr class="sep"/>
 
-        <label class="field">
-          <span>Confirmar contraseña</span>
-          <input id="newPass2" type="password" placeholder="Repite la contraseña" autocomplete="new-password">
-        </label>
+        <div style="display:grid; gap:10px;">
+          <div>
+            <div class="small" style="margin-bottom:6px;">Nueva contraseña</div>
+            <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres"/>
+          </div>
 
-        <button id="btnUpdatePass" class="btn primary">Actualizar</button>
-        <div id="changeMsg" class="info"></div>
+          <div>
+            <div class="small" style="margin-bottom:6px;">Confirmar contraseña</div>
+            <input id="newPass2" type="password" placeholder="Repite la contraseña"/>
+          </div>
+
+          <button id="btnUpdatePass" class="btn">Actualizar</button>
+          <div id="changeMsg" class="info hidden"></div>
+        </div>
       </div>
 
-      <footer class="footer">
-        <span>© <span id="year"></span> IE Imbilí Carretera</span>
-      </footer>
-    </section>
-  </main>
+    </div>
+
+    <div class="footer">Consejo: si no puedes ingresar, contacta a Soporte.</div>
+  </div>
 
   <script type="module" src="login.js"></script>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

@@ -95,6 +95,16 @@ function renderModulesByRole(role){
       desc: "Selecciona curso, período y materia. Registra notas y guarda en Firestore.",
       buttonText: "Abrir",
       onClick: () => window.location.href = "docente.html"
+
+
+      {
+  title:"Secretaría",
+  desc:"Gestión de estudiantes: registro individual, carga masiva (CSV) y matrículas por curso.",
+  tag:"Secretaría",
+  enabled: canSecretaria || canSistemas,
+  go: () => window.location.href = "secretaria.html"
+}
+
     }));
 
     modulesGrid.appendChild(moduleCard({

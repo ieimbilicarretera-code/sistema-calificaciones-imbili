@@ -3,78 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sistema de Calificaciones - IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Panel | Sistema de Calificaciones - IE Imbilí Carretera</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <div class="page">
-    <div class="card">
+  <div class="bg"></div>
 
-      <!-- Header -->
-      <div class="app-top">
-        <div class="brand" style="margin:0;">
-          <img src="logo-ie.png" class="logo-ie" alt="IE Imbilí Carretera">
+  <main class="wrap">
+    <section class="card">
+
+      <div class="topbar">
+        <div class="topbarLeft">
+          <img class="logo" src="logo.png" alt="IE Imbilí Carretera" onerror="this.style.display='none'">
           <div>
-            <h1 id="instNameApp">INSTITUCIÓN EDUCATIVA IMBILÍ CARRETERA</h1>
-            <p>Bienvenido(a): <strong id="userName">...</strong> — Rol: <span id="userRole">...</span></p>
+            <h1 class="titleBig" id="instName">INSTITUCIÓN EDUCATIVA IMBILÍ CARRETERA</h1>
+            <p class="subline">
+              Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b>
+            </p>
           </div>
         </div>
 
-        <div class="pills">
-          <div class="pill">Año lectivo: <strong id="anioLectivo">...</strong></div>
-          <div class="pill">Períodos: <strong id="periodos">...</strong></div>
+        <div class="chips">
+          <span class="chip">Año lectivo: <b id="anioLectivo">...</b></span>
+          <span class="chip">Períodos: <b id="periodos">...</b></span>
         </div>
       </div>
 
-      <!-- Panel principal -->
-      <div class="section">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div class="panel">
+        <div class="panelHeader">
           <div>
-            <h2 style="margin:0;">Panel principal</h2>
-            <p class="muted">En esta pantalla aparecerán los módulos según el rol del usuario (Docente, Secretaría, Rectoría, Soporte).</p>
+            <h2>Panel principal</h2>
+            <p>En esta pantalla aparecerán los módulos según el rol del usuario (Docente, Secretaría, Rectoría, Soporte).</p>
           </div>
-          <button class="btn danger" id="btnLogout">Cerrar sesión</button>
+          <button id="btnLogout" class="btn danger" style="margin:0; width:auto; padding:10px 14px;">
+            Cerrar sesión
+          </button>
         </div>
-        <p class="muted" style="margin-top:10px; font-size:12px;">Consejo: si un módulo no aparece, es por permisos/rol.</p>
+
+        <div class="hr"></div>
+
+        <h3 class="modulesTitle">Módulos</h3>
+        <div id="modulesGrid" class="modulesGrid">
+          <!-- app.js pinta aquí -->
+        </div>
+
+        <p class="hint" style="margin-top:12px;">
+          Consejo: si un módulo no aparece, es por permisos/rol.
+        </p>
+
+        <div class="footer">
+          <span>© <span id="year"></span> IE Imbilí Carretera</span>
+        </div>
       </div>
 
-      <!-- Módulos -->
-      <div class="section">
-        <h2>Módulos</h2>
-        <div id="modulesGrid" class="modules-grid"></div>
-      </div>
-
-      <!-- Vistas (placeholders por ahora) -->
-      <div class="section hidden" id="viewCalificaciones">
-        <h2>Calificaciones</h2>
-        <p class="muted">Aquí construiremos el registro de notas (curso, periodo, materia, estudiantes y guardado en Firestore).</p>
-        <button class="btn secondary" id="btnBack1">Volver</button>
-      </div>
-
-      <div class="section hidden" id="viewPlanillas">
-        <h2>Planillas / Listados</h2>
-        <p class="muted">Aquí construiremos descarga de listados por curso y planillas vacías.</p>
-        <button class="btn secondary" id="btnBack2">Volver</button>
-      </div>
-
-      <div class="section hidden" id="viewBoletines">
-        <h2>Boletines</h2>
-        <p class="muted">Aquí construiremos generación de boletines en PDF (con logo).</p>
-        <button class="btn secondary" id="btnBack3">Volver</button>
-      </div>
-
-      <div class="section hidden" id="viewSistemas">
-        <h2>Sistemas (Soporte)</h2>
-        <p class="muted">Aquí construiremos gestión de usuarios, permisos y autorizaciones.</p>
-        <button class="btn secondary" id="btnBack4">Volver</button>
-      </div>
-
-      <div class="footer">
-        © <span id="yearApp"></span> IE Imbilí Carretera
-      </div>
-
-    </div>
-  </div>
+    </section>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>

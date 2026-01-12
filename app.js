@@ -82,11 +82,52 @@ async function loadGeneralConfig(){
 
 /* =========================
    Render de módulos (estilo PDF)
-   ========================= */
 function renderModulesByRole(role){
-  // Módulos base: Calificaciones / Planillas / Boletines / Sistemas (como el PDF)
-  // Selección del módulo en tu documento: 4 botones grandes. :contentReference[oaicite:4]{index=4}
   const roleL = normRole(role);
+
+  const canCalificaciones = ["docente","secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
+  const canPlanillas     = ["docente","secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
+  const canBoletines     = ["secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);
+  const canSistemas      = ["soporte","admin"].includes(roleL);
+
+  const modules = [
+    { key:"calificaciones", title:"Calificaciones", desc:"Ingresar, modificar y consultar calificaciones.", badge:"Módulo", icon:"C", enabled:canCalificaciones, go:()=>showView(viewCalificaciones) },
+    { key:"planillas",     title:"Planillas",      desc:"Sábanas y listados de estudiantes por curso.",     badge:"Módulo", icon:"P", enabled:canPlanillas,     go:()=>showView(viewPlanillas) },
+    { key:"boletines",     title:"Boletines",      desc:"Generación de boletines (roles autorizados).",      badge:"Académico", icon:"B", enabled:canBoletines,  go:()=>showView(viewBoletines) },
+    { key:"sistemas",      title:"Sistemas",       desc:"Usuarios, permisos y autorizaciones (admin).",      badge:"Admin", icon:"S", enabled:canSistemas,       go:()=>showView(viewSistemas) },
+  ];
+
+  modulesGrid.innerHTML = "";
+
+  for(const m of modules){
+    const btn = document.createElement("button");
+    btn.className = "module-btn";
+    btn.disabled = !m.enabled;
+
+    btn.innerHTML = `
+      <div class="module-left">
+        <div class="module-icon">${m.icon}</div>
+        <div class="module-text">
+          <h3>${m.title}</h3>
+          <p>${m.desc}</p>
+        </div>
+      </div>
+
+      <div class="module-right">
+        <span class="badge">${m.enabled ? m.badge : "Sin permiso"}</span>
+        <span class="arrow">➜</span>
+      </div>
+    `;
+
+    btn.addEventListener("click", () => {
+      if(!m.enabled) return;
+      m.go();
+    });
+
+    modulesGrid.appendChild(btn);
+  }
+}
+
 
   // permisos simples por rol (ajustamos después si quieres permisos por “permisos[]”)
   const canCalificaciones = ["docente","secretaria","rectoria","coordinador","coordinador académico","coordinador academico","soporte","admin"].includes(roleL);

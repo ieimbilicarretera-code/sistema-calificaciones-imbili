@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+
 import {
   getAuth,
   onAuthStateChanged,
@@ -9,11 +10,13 @@ import {
   getFirestore,
   doc,
   getDoc,
-  updateDoc
+  setDoc,
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
-   Firebase config
+   Firebase config (calificaciones-imbili)
    ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
@@ -31,193 +34,370 @@ const db = getFirestore(app);
 /* =========================
    UI refs
    ========================= */
-const instName = document.getElementById("instName");
-const userName = document.getElementById("userName");
-const userRole = document.getElementById("userRole");
-const anioEl = document.getElementById("anio");
+const instNameEl = document.getElementById("instName");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
+const anioEl = document.getElementById("anioLectivo");
 const periodosEl = document.getElementById("periodos");
-const modulesGrid = document.getElementById("modulesGrid");
 const btnLogout = document.getElementById("btnLogout");
+
+const viewMenu = document.getElementById("viewMenu");
+const viewSecretaria = document.getElementById("viewSecretaria");
+const modulesGrid = document.getElementById("modulesGrid");
+
+// Botones regresar
+document.querySelectorAll("[data-back]").forEach(btn => {
+  btn.addEventListener("click", () => showView(viewMenu));
+});
 
 /* =========================
    Helpers
    ========================= */
-function normRole(role){
-  return (role || "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+function showView(viewEl){
+  [viewMenu, viewSecretaria].forEach(v => v?.classList.remove("active"));
+  viewEl?.classList.add("active");
 }
 
-function moduleCard({pill, title, desc, buttonText, onClick}){
-  const el = document.createElement("div");
-  el.className = "module";
-  el.innerHTML = `
-    <div class="pill">${pill}</div>
-    <div>
-      <h3>${title}</h3>
-      <p>${desc}</p>
-    </div>
-    <div class="actions">
-      <button class="btn" type="button">${buttonText}</button>
-    </div>
-  `;
-  el.querySelector("button").addEventListener("click", onClick);
-  return el;
+function normalizeRole(r){
+  return String(r || "").trim().toLowerCase();
 }
 
-async function loadConfig(){
-  try{
+function setMsg(el, text, type=""){
+  if(!el) return;
+  el.style.display = text ? "block" : "none";
+  el.className = "msg " + (type || "");
+  el.textContent = text || "";
+}
+
+async function loadConfigGeneral() {
+  try {
     const snap = await getDoc(doc(db, "config", "general"));
-    if(snap.exists()){
-      const data = snap.data();
-      if(data?.institucion) instName.textContent = data.institucion;
-      if(data?.añoLectivoActual) anioEl.textContent = data.añoLectivoActual;
-      if(data?.periodos) periodosEl.textContent = data.periodos;
+    if (snap.exists()) {
+      const cfg = snap.data();
+      if (instNameEl && cfg?.institucion) instNameEl.textContent = cfg.institucion;
+      if (anioEl && cfg?.añoLectivo != null) anioEl.textContent = String(cfg.añoLectivo);
+      if (periodosEl && cfg?.periodos != null) periodosEl.textContent = String(cfg.periodos);
     }
-  }catch(e){
-    // no bloquea
+  } catch (e) {
+    // si falla, se queda con lo por defecto
   }
 }
 
-function renderModulesByRole(role){
+async function loadUserProfile(uid) {
+  const userSnap = await getDoc(doc(db, "usuarios", uid));
+  if (!userSnap.exists()) return null;
+  return userSnap.data();
+}
+
+/* =========================
+   Render módulos por rol
+   ========================= */
+function renderModulesByRole(roleRaw){
+  const role = normalizeRole(roleRaw);
   modulesGrid.innerHTML = "";
 
-  const r = normRole(role);
+  const canSeeSecretaria = ["secretaria", "soporte", "rector", "rectora", "coordinador", "coordinador academico", "coordinador académico"]
+    .includes(role);
 
-  // DOCENTE
-  if(r === "docente"){
-    modulesGrid.appendChild(moduleCard({
-      pill: "Docente",
-      title: "Registro de notas",
-      desc: "Selecciona curso, período y materia. Registra notas y guarda en Firestore.",
-      buttonText: "Abrir",
-      onClick: () => window.location.href = "docente.html"
+  const modules = [
+    // Secretaría
+    {
+      id: "secretaria",
+      title: "Secretaría • Estudiantes",
+      desc: "Registrar estudiantes (individual o carga masiva CSV).",
+      badge: "Secretaría",
+      icon: "SE",
+      enabled: canSeeSecretaria,
+      onClick: () => showView(viewSecretaria)
+    },
 
+    // Docente (por ahora solo placeholder)
+    {
+      id: "docente",
+      title: "Docente • Registro de notas",
+      desc: "Siguiente paso: cargar estudiantes por curso y registrar notas por período.",
+      badge: "Docente",
+      icon: "DO",
+      enabled: ["docente", "soporte", "rector", "rectora", "coordinador", "coordinador academico", "coordinador académico"].includes(role),
+      onClick: () => alert("Este módulo lo armamos en el siguiente paso (registro de notas).")
+    }
+  ];
 
-      {
-  title:"Secretaría",
-  desc:"Gestión de estudiantes: registro individual, carga masiva (CSV) y matrículas por curso.",
-  tag:"Secretaría",
-  enabled: canSecretaria || canSistemas,
-  go: () => window.location.href = "secretaria.html"
+  modules.forEach(m => {
+    const btn = document.createElement("button");
+    btn.className = "module-btn";
+    btn.disabled = !m.enabled;
+
+    btn.innerHTML = `
+      <div class="module-left">
+        <div class="module-icon">${m.icon}</div>
+        <div class="module-text">
+          <h3>${m.title}</h3>
+          <p>${m.desc}</p>
+        </div>
+      </div>
+      <div class="module-right">
+        <span class="badge">${m.badge}</span>
+        <span class="arrow">→</span>
+      </div>
+    `;
+
+    btn.addEventListener("click", () => {
+      if(!m.enabled){
+        alert("No tienes permisos para este módulo.");
+        return;
+      }
+      m.onClick();
+    });
+
+    modulesGrid.appendChild(btn);
+  });
 }
 
-    }));
+/* =========================
+   Secretaría: guardar estudiante
+   ========================= */
+const stTipoDoc = document.getElementById("stTipoDoc");
+const stDocumento = document.getElementById("stDocumento");
+const stNombres = document.getElementById("stNombres");
+const stApellidos = document.getElementById("stApellidos");
+const stGrado = document.getElementById("stGrado");
+const stCurso = document.getElementById("stCurso");
+const stJornada = document.getElementById("stJornada");
+const stNacimiento = document.getElementById("stNacimiento");
+const stEdad = document.getElementById("stEdad");
+const stCorreo = document.getElementById("stCorreo");
+const stTelefono = document.getElementById("stTelefono");
+const stDireccion = document.getElementById("stDireccion");
 
-    modulesGrid.appendChild(moduleCard({
-      pill: "Docente",
-      title: "Listados por curso",
-      desc: "Descarga listado de estudiantes (plantilla) por curso para planilla manual.",
-      buttonText: "Ver",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
+const btnGuardarEstudiante = document.getElementById("btnGuardarEstudiante");
+const btnLimpiarEstudiante = document.getElementById("btnLimpiarEstudiante");
 
-    modulesGrid.appendChild(moduleCard({
-      pill: "Docente",
-      title: "Consolidado",
-      desc: "Descarga consolidado (CSV/Excel/PDF) del curso/período/materia seleccionados.",
-      buttonText: "Ver",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
+const msgSecretaria1 = document.getElementById("msgSecretaria1");
+const msgSecretaria2 = document.getElementById("msgSecretaria2");
 
-    return;
-  }
-
-  // SECRETARÍA / RECTORÍA / COORDINADOR
-  if(["secretaria","rectoria","coordinador","coordinador academico"].includes(r)){
-    modulesGrid.appendChild(moduleCard({
-      pill: "Administrativo",
-      title: "Gestión de estudiantes",
-      desc: "Registro individual y masivo (Excel/archivo plano). Organización por curso.",
-      buttonText: "Abrir",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
-
-    modulesGrid.appendChild(moduleCard({
-      pill: "Administrativo",
-      title: "Planillas / Sábanas",
-      desc: "Genera listados de asistencia y sábanas por curso.",
-      buttonText: "Abrir",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
-
-    modulesGrid.appendChild(moduleCard({
-      pill: "Administrativo",
-      title: "Boletines",
-      desc: "Genera boletines por estudiante y curso (PDF).",
-      buttonText: "Abrir",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
-
-    return;
-  }
-
-  // SOPORTE
-  if(["soporte","admin"].includes(r)){
-    modulesGrid.appendChild(moduleCard({
-      pill: "Sistemas",
-      title: "Usuarios y permisos",
-      desc: "Crear/editar usuarios, asignar roles y autorizar solicitudes.",
-      buttonText: "Abrir",
-      onClick: () => alert("Este módulo se construye en el siguiente paso.")
-    }));
-    return;
-  }
-
-  // Sin rol
-  modulesGrid.appendChild(moduleCard({
-    pill: "Info",
-    title: "Sin rol asignado",
-    desc: "Tu usuario no tiene rol válido. Contacta a soporte para asignar permisos.",
-    buttonText: "Entendido",
-    onClick: () => {}
-  }));
+function limpiarFormEstudiante(){
+  stTipoDoc.value = "TI";
+  stDocumento.value = "";
+  stNombres.value = "";
+  stApellidos.value = "";
+  stGrado.value = "";
+  stCurso.value = "";
+  stJornada.value = "Mañana";
+  stNacimiento.value = "";
+  stEdad.value = "";
+  stCorreo.value = "";
+  stTelefono.value = "";
+  stDireccion.value = "";
+  setMsg(msgSecretaria1, "", "");
 }
+
+btnLimpiarEstudiante?.addEventListener("click", limpiarFormEstudiante);
+
+btnGuardarEstudiante?.addEventListener("click", async () => {
+  try{
+    setMsg(msgSecretaria1, "", "");
+
+    const documento = String(stDocumento.value || "").trim();
+    const nombres = String(stNombres.value || "").trim();
+    const apellidos = String(stApellidos.value || "").trim();
+    const grado = String(stGrado.value || "").trim();
+    const curso = String(stCurso.value || "").trim();
+
+    if(!documento || !nombres || !apellidos || !grado || !curso){
+      setMsg(msgSecretaria1, "Faltan campos obligatorios (*).", "warn");
+      return;
+    }
+
+    const payload = {
+      tipoDoc: String(stTipoDoc.value || "TI"),
+      documento,
+      nombres,
+      apellidos,
+      grado: isNaN(Number(grado)) ? grado : Number(grado),
+      curso: curso.toUpperCase(),
+      jornada: String(stJornada.value || "Mañana"),
+      nacimiento: stNacimiento.value ? String(stNacimiento.value) : "",
+      edad: stEdad.value ? Number(stEdad.value) : null,
+      correo: String(stCorreo.value || "").trim(),
+      telefono: String(stTelefono.value || "").trim(),
+      direccion: String(stDireccion.value || "").trim(),
+      activo: true,
+      updatedAt: serverTimestamp()
+    };
+
+    // DocID = documento (recomendado)
+    await setDoc(doc(db, "estudiantes", documento), payload, { merge: true });
+
+    setMsg(msgSecretaria1, `✅ Estudiante guardado: ${documento} - ${nombres} ${apellidos}`, "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgSecretaria1, "❌ No se pudo guardar. Revisa permisos/reglas o conexión.", "err");
+  }
+});
+
+/* =========================
+   Secretaría: importar CSV
+   ========================= */
+const csvFile = document.getElementById("csvFile");
+const btnImportarCSV = document.getElementById("btnImportarCSV");
+const btnDescargarPlantillaCSV = document.getElementById("btnDescargarPlantillaCSV");
+
+function downloadText(filename, text){
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+btnDescargarPlantillaCSV?.addEventListener("click", () => {
+  const sample =
+`tipoDoc,documento,nombres,apellidos,grado,curso,jornada,edad,correo,telefono,direccion
+TI,123456789,JUAN,CARLOS,5,5A,Mañana,10,acudiente@gmail.com,3110000000,Barrio X
+`;
+  downloadText("plantilla_estudiantes.csv", sample);
+});
+
+function parseCSV(text){
+  // detecta separador: ; o ,
+  const sep = text.includes(";") && !text.includes(",") ? ";" : (text.includes(";") ? ";" : ",");
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if(lines.length < 2) return { headers: [], rows: [] };
+
+  const headers = lines[0].split(sep).map(h => h.trim().toLowerCase());
+  const rows = [];
+
+  for(let i=1;i<lines.length;i++){
+    const cols = lines[i].split(sep).map(c => c.trim());
+    const obj = {};
+    headers.forEach((h, idx) => obj[h] = cols[idx] ?? "");
+    rows.push(obj);
+  }
+  return { headers, rows };
+}
+
+btnImportarCSV?.addEventListener("click", async () => {
+  try{
+    setMsg(msgSecretaria2, "", "");
+
+    const file = csvFile?.files?.[0];
+    if(!file){
+      setMsg(msgSecretaria2, "Selecciona un archivo CSV primero.", "warn");
+      return;
+    }
+
+    const text = await file.text();
+    const { rows } = parseCSV(text);
+
+    if(rows.length === 0){
+      setMsg(msgSecretaria2, "El CSV no tiene filas de datos.", "warn");
+      return;
+    }
+
+    // batch por seguridad (si fueran muchísimos, luego lo partimos)
+    const batch = writeBatch(db);
+
+    let okCount = 0;
+    let skipCount = 0;
+
+    rows.forEach(r => {
+      const documento = String(r.documento || "").trim();
+      const nombres = String(r.nombres || "").trim();
+      const apellidos = String(r.apellidos || "").trim();
+      const gradoRaw = String(r.grado || "").trim();
+      const curso = String(r.curso || "").trim();
+
+      if(!documento || !nombres || !apellidos || !gradoRaw || !curso){
+        skipCount++;
+        return;
+      }
+
+      const payload = {
+        tipoDoc: String(r.tipodoc || r.tipoDoc || r.tipodocumento || "TI").trim() || "TI",
+        documento,
+        nombres,
+        apellidos,
+        grado: isNaN(Number(gradoRaw)) ? gradoRaw : Number(gradoRaw),
+        curso: curso.toUpperCase(),
+        jornada: String(r.jornada || "Mañana").trim() || "Mañana",
+        edad: r.edad ? Number(r.edad) : null,
+        correo: String(r.correo || "").trim(),
+        telefono: String(r.telefono || "").trim(),
+        direccion: String(r.direccion || "").trim(),
+        activo: true,
+        updatedAt: serverTimestamp()
+      };
+
+      batch.set(doc(db, "estudiantes", documento), payload, { merge: true });
+      okCount++;
+    });
+
+    if(okCount === 0){
+      setMsg(msgSecretaria2, "No se encontraron filas válidas. Revisa que tenga documento,nombres,apellidos,grado,curso.", "warn");
+      return;
+    }
+
+    await batch.commit();
+
+    setMsg(
+      msgSecretaria2,
+      `✅ Importación lista. Guardados/actualizados: ${okCount}. Omitidos: ${skipCount}.`,
+      "ok"
+    );
+  }catch(e){
+    console.error(e);
+    setMsg(msgSecretaria2, "❌ Error importando CSV. Revisa consola/permisos/reglas.", "err");
+  }
+});
+
+/* =========================
+   Auth guard + carga inicial
+   ========================= */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  await loadConfigGeneral();
+
+  try {
+    const profile = await loadUserProfile(user.uid);
+
+    if (!profile) {
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+      await signOut(auth);
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (profile.activo !== true) {
+      alert("Usuario inactivo. Contacta a soporte.");
+      await signOut(auth);
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (userNameEl) userNameEl.textContent = profile.nombre || "(Sin nombre)";
+    if (userRoleEl) userRoleEl.textContent = profile.rol || "(Sin rol)";
+
+    renderModulesByRole(profile.rol);
+
+  } catch (error) {
+    console.error(error);
+    alert("Error cargando el panel. Revisa tu conexión o contacta a soporte.");
+  }
+});
 
 /* =========================
    Logout
    ========================= */
-btnLogout.addEventListener("click", async () => {
+btnLogout?.addEventListener("click", async () => {
   await signOut(auth);
   window.location.href = "index.html";
-});
-
-/* =========================
-   Init
-   ========================= */
-loadConfig();
-
-onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    window.location.href = "index.html";
-    return;
-  }
-
-  // Cargar perfil
-  const snap = await getDoc(doc(db, "usuarios", user.uid));
-  if(!snap.exists()){
-    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-    await signOut(auth);
-    window.location.href = "index.html";
-    return;
-  }
-
-  const profile = snap.data();
-  userName.textContent = profile.nombre || user.email || "Usuario";
-  userRole.textContent = (profile.rol || "sin rol").toString().toLowerCase();
-
-  // Si venimos de cambiar contraseña, bajamos el flag mustChangePassword
-  if(localStorage.getItem("justChangedPassword") === "1"){
-    try{
-      await updateDoc(doc(db, "usuarios", user.uid), { mustChangePassword: false });
-    }catch(e){
-      // si falla, lo revisamos luego
-    }
-    localStorage.removeItem("justChangedPassword");
-  }
-
-  renderModulesByRole(profile.rol);
 });

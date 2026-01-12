@@ -7,73 +7,94 @@
   <link rel="stylesheet" href="styles.css"/>
 </head>
 
-  
 <body>
   <div class="shell">
-    <div class="card big">
-
-      <div class="topbar">
+    <div class="card app-card">
+      <!-- Header -->
+      <div class="app-header">
         <div class="brand">
-          <img id="logoIe" class="logo" src="logo.png" alt="IE Imbilí Carretera" />
-          <div>
-            <div class="brand-title">Institución Educativa Imbilí Carretera</div>
-            <div class="brand-sub">Docente • Registro de notas</div>
+          <div class="brand-left">
+            <img id="logoIE" src="logo.png" alt="IE Imbilí" class="logo"/>
+          </div>
+          <div class="brand-right">
+            <div class="inst" id="instName">Institución Educativa Imbilí Carretera</div>
+            <div class="meta">
+              Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">docente</b>
+            </div>
           </div>
         </div>
 
-        <div class="top-actions">
-          <a class="btn ghost" href="app.html">Volver</a>
+        <div class="top-badges">
+          <span class="pill">Año lectivo: <b id="anioLectivo">...</b></span>
+          <span class="pill">Periodos: <b id="periodos">4</b></span>
         </div>
       </div>
 
-      <div class="section">
-        <h2>Filtros</h2>
+      <!-- Subheader -->
+      <div class="subbar">
+        <div>
+          <div class="h2">Docente • Registro de notas</div>
+          <div class="muted">Elige curso, período y materia. Agrega actividades (nota + observación) y mira la definitiva en tiempo real.</div>
+        </div>
+        <div>
+          <button class="btn btn-ghost" id="btnVolver">Volver</button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="panel">
+        <div class="panel-title">Filtros</div>
 
         <div class="grid-2">
-          <div>
-            <label>Curso <span class="req">*</span></label>
+          <div class="field">
+            <label>Curso *</label>
             <select id="selCurso"></select>
           </div>
 
-          <div>
-            <label>Período <span class="req">*</span></label>
-            <select id="selPeriodo"></select>
-          </div>
-
-          <div class="grid-span-2">
-            <label>Materia <span class="req">*</span></label>
-            <select id="selMateria">
-              <option value="">Selecciona curso primero...</option>
+          <div class="field">
+            <label>Período *</label>
+            <select id="selPeriodo">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
             </select>
           </div>
         </div>
 
-        <div class="toolbar">
-          <button class="btn primary" id="btnCargar">Cargar estudiantes</button>
-          <button class="btn" id="btnAgregarActividad">+ Agregar actividad</button>
-          <button class="btn" id="btnGuardar">Guardar notas</button>
-          <button class="btn ghost" id="btnDescargarCSV">Descargar consolidado (CSV)</button>
+        <div class="field">
+          <label>Materia *</label>
+          <select id="selMateria">
+            <option value="">Selecciona un curso primero...</option>
+          </select>
         </div>
 
-        <div class="help">
-          • Actividades: cada estudiante tendrá varias actividades (nota + observación).<br/>
-          • La <b>definitiva</b> se calcula como el <b>promedio</b> de las notas diligenciadas (0 a 5).
+        <div class="btnrow">
+          <button class="btn" id="btnCargar">Cargar estudiantes</button>
+          <button class="btn btn-secondary" id="btnGuardar">Guardar notas</button>
+          <button class="btn btn-ghost" id="btnAgregarActividad">+ Agregar actividad</button>
         </div>
 
-        <div id="msg" class="msg" style="display:none;"></div>
+        <div class="muted" style="margin-top:10px">
+          Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de las notas diligenciadas.
+        </div>
+
+        <div id="msg" class="msg" style="display:none"></div>
       </div>
 
-      <div class="section">
-        <div class="row-between">
-          <h2>Estudiantes del curso</h2>
-          <div class="muted"><span id="countStudents">0</span> estudiantes</div>
+      <!-- Contenido -->
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-title">Estudiantes del curso</div>
+
+        <div class="row-between muted" style="margin:6px 0 12px">
+          <div id="infoFiltro">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
+          <div><b id="countEst">0</b> estudiantes</div>
         </div>
 
-        <div id="studentsList" class="students-list">
-          <div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
-        </div>
+        <div id="studentsWrap" class="students-wrap"></div>
       </div>
 
+      <div class="footer muted">© <span id="year"></span> IE Imbilí Carretera</div>
     </div>
   </div>
 

@@ -1,65 +1,57 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Panel | Sistema de Calificaciones - IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>IE Imbilí Carretera | Panel</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
-
 <body>
-  <div class="bg"></div>
 
-  <main class="wrap">
-    <section class="card">
-
-      <div class="topbar">
-        <div class="topbarLeft">
-          <img class="logo" src="logo.png" alt="IE Imbilí Carretera" onerror="this.style.display='none'">
-          <div>
-            <h1 class="titleBig" id="instName">INSTITUCIÓN EDUCATIVA IMBILÍ CARRETERA</h1>
-            <p class="subline">
-              Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b>
-            </p>
-          </div>
-        </div>
-
-        <div class="chips">
-          <span class="chip">Año lectivo: <b id="anioLectivo">...</b></span>
-          <span class="chip">Períodos: <b id="periodos">...</b></span>
+  <div class="shell">
+    <div class="header">
+      <div class="brand">
+        <img class="logo-img" src="assets/logo.png" alt="IE Imbilí Carretera">
+        <div>
+          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+          <p>Panel principal</p>
+          <p class="small">Bienvenido(a): <b id="userName">—</b> — Rol: <b id="userRole">—</b></p>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panelHeader">
+      <div class="badges">
+        <div class="badge">Año lectivo: <b id="anio">—</b></div>
+        <div class="badge">Períodos: <b id="periodos">—</b></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="card">
+        <div class="row">
           <div>
-            <h2>Panel principal</h2>
-            <p>En esta pantalla aparecerán los módulos según el rol del usuario (Docente, Secretaría, Rectoría, Soporte).</p>
+            <div style="font-weight:800; font-size:18px;">Panel principal</div>
+            <div class="small">Los módulos dependen del rol (Docente, Secretaría, Rectoría, Soporte).</div>
           </div>
-          <button id="btnLogout" class="btn danger" style="margin:0; width:auto; padding:10px 14px;">
-            Cerrar sesión
-          </button>
+          <button id="btnLogout" class="btn-danger">Cerrar sesión</button>
         </div>
-
-        <div class="hr"></div>
-
-        <h3 class="modulesTitle">Módulos</h3>
-        <div id="modulesGrid" class="modulesGrid">
-          <!-- app.js pinta aquí -->
-        </div>
-
-        <p class="hint" style="margin-top:12px;">
-          Consejo: si un módulo no aparece, es por permisos/rol.
-        </p>
-
-        <div class="footer">
-          <span>© <span id="year"></span> IE Imbilí Carretera</span>
-        </div>
+        <hr class="sep"/>
+        <div class="small">Consejo: si un módulo no aparece, es por permisos/rol.</div>
       </div>
 
-    </section>
-  </main>
+      <div class="card">
+        <div style="font-weight:800; font-size:16px;">Módulos</div>
+        <div class="small">Selecciona una opción para continuar.</div>
+        <hr class="sep"/>
+        <div id="modulesGrid" class="grid"></div>
+      </div>
+    </div>
 
+    <div class="footer">© <span id="year2"></span> IE Imbilí Carretera</div>
+  </div>
+
+  <script>
+    document.getElementById("year2").textContent = new Date().getFullYear();
+  </script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

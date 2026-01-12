@@ -3,8 +3,7 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
-  updatePassword,
-  onAuthStateChanged
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
@@ -14,7 +13,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
-   Firebase Config (calificaciones-imbili)
+   Firebase config (TU PROYECTO)
    ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
@@ -32,8 +31,7 @@ const db = getFirestore(app);
 /* =========================
    UI refs
    ========================= */
-const yearEl = document.getElementById("year");
-yearEl.textContent = new Date().getFullYear();
+const instName = document.getElementById("instName");
 
 const loginView = document.getElementById("loginView");
 const forgotView = document.getElementById("forgotView");
@@ -54,11 +52,6 @@ const newPass2 = document.getElementById("newPass2");
 const btnUpdatePass = document.getElementById("btnUpdatePass");
 const changeMsg = document.getElementById("changeMsg");
 
-const instName = document.getElementById("instName");
-
-/* =========================
-   Helpers
-   ========================= */
 function show(view){
   loginView.classList.add("hidden");
   forgotView.classList.add("hidden");
@@ -68,6 +61,9 @@ function show(view){
 
 function setMsg(el, text, ok=false){
   el.textContent = text || "";
+  el.classList.remove("hidden");
+  el.classList.toggle("ok", !!ok);
+  el.classList.toggle("err", !ok);
   el.className = "info " + (ok ? "ok" : "err");
 }
 
@@ -79,7 +75,7 @@ async function loadInstitutionName(){
       if(data?.institucion) instName.textContent = data.institucion;
     }
   }catch(e){
-    // si falla, no pasa nada
+    // no bloquea
   }
 }
 loadInstitutionName();
@@ -99,6 +95,7 @@ btnLogin.addEventListener("click", async () => {
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
 
+    // Perfil en Firestore: docId debe ser el UID
     const uid = cred.user.uid;
     const userSnap = await getDoc(doc(db, "usuarios", uid));
 
@@ -109,19 +106,19 @@ btnLogin.addEventListener("click", async () => {
 
     const profile = userSnap.data();
 
-    if(profile.activo !== true){
+    const activo = profile.activo ?? profile.Activo;
+    if(activo !== true){
       alert("Usuario inactivo. Contacta a soporte.");
       return;
     }
 
-    if(profile.mustChangePassword === true){
+    const must = profile.mustChangePassword ?? profile.mustchangepassword;
+    if(must === true){
       show(forceChangeView);
-      setMsg(changeMsg, "");
       return;
     }
 
     window.location.href = "app.html";
-
   }catch(err){
     console.error(err);
     alert("Error al ingresar. Verifica tu correo y contraseña.");
@@ -134,8 +131,8 @@ btnLogin.addEventListener("click", async () => {
 linkForgot.addEventListener("click", (e) => {
   e.preventDefault();
   show(forgotView);
-  setMsg(forgotMsg, "");
   forgotEmail.value = (emailEl.value || "").trim();
+  forgotMsg.classList.add("hidden");
 });
 
 btnBackLogin.addEventListener("click", () => {
@@ -183,21 +180,14 @@ btnUpdatePass.addEventListener("click", async () => {
 
     await updatePassword(auth.currentUser, p1);
 
-    // marca local para que app.html actualice mustChangePassword=false
+    // Marcar para que app.html actualice mustChangePassword a false
     localStorage.setItem("justChangedPassword", "1");
 
-    setMsg(changeMsg, "Proceso exitoso. Continuando...", true);
-    setTimeout(() => window.location.href = "app.html", 700);
+    setMsg(changeMsg, "Proceso exitoso. Continuando…", true);
+    setTimeout(() => window.location.href = "app.html", 800);
 
   }catch(err){
     console.error(err);
     setMsg(changeMsg, "No se pudo cambiar. Vuelve a iniciar sesión y reintenta.", false);
   }
-});
-
-/* =========================
-   Si ya está logueado
-   ========================= */
-onAuthStateChanged(auth, async (user) => {
-  // No redirigimos automáticamente aquí para no romper el flujo de cambio obligatorio.
 });

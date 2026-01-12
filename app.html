@@ -2,480 +2,261 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Sistema de Calificaciones - IE Imbilí Carretera</title>
-
-  
-  <style>
-    :root{
-      --bg1:#050816;
-      --bg2:#0b1b36;
-      --card:rgba(10,20,40,.55);
-      --border:rgba(255,255,255,.12);
-      --text:#eaf0ff;
-      --muted:rgba(234,240,255,.75);
-      --accent:#6d5efc;
-      --accent2:#00d4ff;
-      --danger:#ff4d6d;
-      --ok:#2ee59d;
-      --warn:#ffd166;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      min-height:100vh;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--text);
-      background:
-        radial-gradient(1200px 600px at 20% 10%, rgba(109,94,252,.22), transparent 55%),
-        radial-gradient(900px 520px at 85% 30%, rgba(0,212,255,.16), transparent 55%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:28px 14px;
-    }
-    .wrap{
-      width:min(1100px, 100%);
-      border:1px solid var(--border);
-      background:var(--card);
-      backdrop-filter: blur(14px);
-      border-radius:18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-      overflow:hidden;
-    }
-    .top{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      padding:22px 22px 14px 22px;
-      border-bottom:1px solid var(--border);
-    }
-    .brand{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      min-width: 260px;
-    }
-    .logoWrap{
-      width:52px;height:52px;
-      border-radius:16px;
-      display:grid;
-      place-items:center;
-      background: rgba(0,0,0,.18);
-      border:1px solid var(--border);
-      overflow:hidden;
-    }
-    .logoWrap img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
-    }
-    .titles h1{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.2px;
-      line-height:1.2;
-    }
-    .titles p{
-      margin:6px 0 0 0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .kpi{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
-    .pill{
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.15);
-      border-radius:999px;
-      padding:8px 12px;
-      font-size:12.5px;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-    .pill b{color:var(--text)}
-    .content{
-      padding:18px 22px 22px;
-    }
-    .card{
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:16px;
-      background: rgba(0,0,0,.12);
-    }
-    .card h2{
-      margin:0 0 6px 0;
-      font-size:15px;
-      letter-spacing:.2px;
-    }
-    .card p{
-      margin:0;
-      font-size:13px;
-      color:var(--muted);
-    }
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      border:none;
-      cursor:pointer;
-      padding:11px 14px;
-      border-radius:12px;
-      font-weight:700;
-      color:#fff;
-      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(109,94,252,.70));
-      box-shadow: 0 10px 24px rgba(109,94,252,.22);
-    }
-    .btn:hover{ filter:brightness(1.05); }
-    .btn:disabled{
-      cursor:not-allowed;
-      filter:saturate(.4);
-      opacity:.7;
-    }
-    .btn-danger{
-      background: linear-gradient(135deg, rgba(255,77,109,.95), rgba(255,77,109,.65));
-      box-shadow: 0 10px 24px rgba(255,77,109,.18);
-    }
-    .btn-ghost{
-      background: transparent;
-      border: 1px solid var(--border);
-      box-shadow:none;
-      color: var(--text);
-    }
-    .sep{
-      height:1px;
-      background: var(--border);
-      margin:12px 0;
-    }
-    .hint{
-      margin-top:10px;
-      text-align:center;
-      font-size:12px;
-      color:rgba(234,240,255,.62);
-    }
-
-    /* ====== Menú tipo BOTONES ====== */
-    .modules-grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap:14px;
-    }
-    @media (max-width: 720px){
-      .modules-grid{ grid-template-columns: 1fr; }
-    }
-
-    .module-btn{
-      width:100%;
-      text-align:left;
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:16px 16px;
-      background:
-        radial-gradient(900px 260px at 10% 0%, rgba(109,94,252,.22), transparent 55%),
-        radial-gradient(900px 260px at 90% 30%, rgba(0,212,255,.14), transparent 55%),
-        rgba(0,0,0,.12);
-      color: var(--text);
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:16px;
-      transition: transform .10s ease, filter .10s ease;
-      min-height: 92px;
-    }
-    .module-btn:hover{ transform: translateY(-1px); filter: brightness(1.05); }
-    .module-btn:active{ transform: translateY(0px); }
-    .module-btn:disabled{
-      cursor:not-allowed;
-      filter:saturate(.4);
-      opacity:.65;
-    }
-    .module-left{
-      display:flex;
-      align-items:flex-start;
-      gap:12px;
-      flex: 1;
-    }
-    .module-icon{
-      width:44px;
-      height:44px;
-      border-radius:14px;
-      display:grid;
-      place-items:center;
-      font-weight:900;
-      color:#071022;
-      background: linear-gradient(135deg, rgba(109,94,252,.95), rgba(0,212,255,.70));
-      box-shadow: 0 10px 24px rgba(109,94,252,.22);
-      user-select:none;
-    }
-    .module-text h3{
-      margin:0;
-      font-size:16px;
-      letter-spacing:.2px;
-    }
-    .module-text p{
-      margin:6px 0 0 0;
-      color: var(--muted);
-      font-size:13px;
-      line-height:1.35;
-    }
-    .module-right{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      white-space:nowrap;
-    }
-    .badge{
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.18);
-      color: var(--muted);
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-    }
-    .arrow{ font-weight:900; opacity:.9; }
-
-    /* ====== Vistas ====== */
-    .view{ display:none; }
-    .view.active{ display:block; }
-
-    /* ====== Secretaría forms ====== */
-    .grid2{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-    }
-    @media (max-width: 860px){ .grid2{ grid-template-columns: 1fr; } }
-
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
-    .field label{
-      font-size:12.5px;
-      color: var(--muted);
-    }
-    .input, select, textarea{
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.18);
-      color: var(--text);
-      border-radius:12px;
-      padding:10px 12px;
-      outline:none;
-      font-size:14px;
-    }
-    textarea{ min-height: 86px; resize: vertical; }
-    .note{
-      font-size:12px;
-      color: rgba(234,240,255,.70);
-      line-height:1.4;
-      margin-top:8px;
-    }
-    .msg{
-      margin-top:10px;
-      border:1px solid var(--border);
-      background: rgba(0,0,0,.16);
-      border-radius:12px;
-      padding:10px 12px;
-      font-size:13px;
-      color: var(--muted);
-    }
-    .msg.ok{ border-color: rgba(46,229,157,.35); color: rgba(46,229,157,.95); }
-    .msg.err{ border-color: rgba(255,77,109,.35); color: rgba(255,77,109,.95); }
-    .msg.warn{ border-color: rgba(255,209,102,.35); color: rgba(255,209,102,.95); }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IE Imbilí Carretera | Panel</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        <div class="logoWrap">
-          <!-- PASO LOGO: sube tu imagen al repo y pon el nombre aquí -->
-          <img src="logo.png" alt="IE Imbilí Carretera" />
+  <div class="bg"></div>
+
+  <main class="wrap">
+    <section class="card">
+      <!-- Header -->
+      <header class="top">
+        <div class="brand">
+          <img class="logo" src="logo.png" alt="IE Imbilí Carretera" />
+          <div class="brandText">
+            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+            <p class="sub">
+              Bienvenido(a): <b id="userName">---</b> — Rol: <b id="userRole">---</b>
+            </p>
+          </div>
         </div>
 
-        <div class="titles">
-          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-          <p>
-            Bienvenido(a): <b id="userName">...</b>
-            — Rol: <b id="userRole">...</b>
-          </p>
+        <div class="pillRow">
+          <span class="pill">Año lectivo: <b id="anioLectivo">...</b></span>
+          <span class="pill">Períodos: <b id="periodos">...</b></span>
         </div>
-      </div>
+      </header>
 
-      <div class="kpi">
-        <div class="pill">Año lectivo: <b id="anioLectivo">...</b></div>
-        <div class="pill">Períodos: <b id="periodos">...</b></div>
-      </div>
-    </div>
-
-    <div class="content">
-      <div class="card">
-        <div class="row">
+      <!-- MENU -->
+      <section id="viewMenu" class="view active">
+        <div class="panelHead">
           <div>
             <h2>Panel principal</h2>
-            <p>Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.</p>
+            <p class="muted">Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.</p>
           </div>
-          <button id="btnLogout" class="btn btn-danger">Cerrar sesión</button>
+          <button id="btnLogout" class="btn danger">Cerrar sesión</button>
         </div>
-        <div class="sep"></div>
+
         <p class="hint">Consejo: si un módulo no aparece, es por permisos/rol.</p>
-      </div>
 
-      <!-- Vista: Selección del módulo -->
-      <div id="viewMenu" class="view active">
-        <div class="modules-grid" id="modulesGrid"></div>
-      </div>
+        <h3 class="sectionTitle">Módulos</h3>
+        <div id="modulesGrid" class="modulesGrid"></div>
 
-      <!-- Vista: Secretaría (Estudiantes) -->
-      <div id="viewSecretaria" class="view">
-        <div class="card">
-          <div class="row">
-            <div>
-              <h2>Secretaría • Estudiantes</h2>
-              <p>Registrar estudiantes (individual o carga masiva). Quedan disponibles para los docentes.</p>
-            </div>
-            <button class="btn btn-ghost" data-back>← Regresar</button>
+        <footer class="foot">© <span id="year"></span> IE Imbilí Carretera</footer>
+      </section>
+
+      <!-- SECRETARIA -->
+      <section id="viewSecretaria" class="view">
+        <div class="panelHead">
+          <div>
+            <h2>Secretaría • Estudiantes</h2>
+            <p class="muted">Registro individual y carga masiva (CSV). Esto alimenta el sistema para que Docentes registren notas.</p>
           </div>
-
-          <div class="sep"></div>
-
-          <div class="grid2">
-            <!-- Registro individual -->
-            <div class="card" style="background:rgba(0,0,0,.10)">
-              <h2>Registro individual</h2>
-              <p>Completa los datos y guarda.</p>
-
-              <div class="grid2">
-                <div class="field">
-                  <label>Tipo de documento</label>
-                  <select id="stTipoDoc">
-                    <option value="TI">TI</option>
-                    <option value="CC">CC</option>
-                    <option value="RC">RC</option>
-                    <option value="CE">CE</option>
-                    <option value="PA">PA</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <label>Número de documento *</label>
-                  <input class="input" id="stDocumento" placeholder="Ej: 1087200716" />
-                </div>
-
-                <div class="field">
-                  <label>Nombres *</label>
-                  <input class="input" id="stNombres" placeholder="Ej: Juan Carlos" />
-                </div>
-
-                <div class="field">
-                  <label>Apellidos *</label>
-                  <input class="input" id="stApellidos" placeholder="Ej: Pérez García" />
-                </div>
-
-                <div class="field">
-                  <label>Grado (0-11) *</label>
-                  <input class="input" id="stGrado" placeholder="Ej: 5" />
-                </div>
-
-                <div class="field">
-                  <label>Curso (Ej: 5A, 6B) *</label>
-                  <input class="input" id="stCurso" placeholder="Ej: 5A" />
-                </div>
-
-                <div class="field">
-                  <label>Jornada</label>
-                  <select id="stJornada">
-                    <option value="Mañana">Mañana</option>
-                    <option value="Tarde">Tarde</option>
-                    <option value="Noche">Noche</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <label>Fecha de nacimiento</label>
-                  <input class="input" id="stNacimiento" type="date" />
-                </div>
-
-                <div class="field">
-                  <label>Edad</label>
-                  <input class="input" id="stEdad" type="number" min="0" placeholder="Ej: 10" />
-                </div>
-
-                <div class="field">
-                  <label>Correo acudiente</label>
-                  <input class="input" id="stCorreo" placeholder="Ej: acudiente@gmail.com" />
-                </div>
-
-                <div class="field">
-                  <label>Teléfono</label>
-                  <input class="input" id="stTelefono" placeholder="Ej: 3110000000" />
-                </div>
-
-                <div class="field">
-                  <label>Dirección</label>
-                  <input class="input" id="stDireccion" placeholder="Ej: Barrio..., Calle..." />
-                </div>
-              </div>
-
-              <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn" id="btnGuardarEstudiante">Guardar estudiante</button>
-                <button class="btn btn-ghost" id="btnLimpiarEstudiante">Limpiar</button>
-              </div>
-
-              <div id="msgSecretaria1" class="msg" style="display:none"></div>
-
-              <div class="note">
-                * Recomendación: usa el <b>documento</b> como identificador único del estudiante.
-              </div>
-            </div>
-
-            <!-- Carga masiva CSV -->
-            <div class="card" style="background:rgba(0,0,0,.10)">
-              <h2>Carga masiva (CSV)</h2>
-              <p>Exporta desde Excel como CSV y súbelo aquí.</p>
-
-              <div class="field" style="margin-top:10px;">
-                <label>Archivo CSV</label>
-                <input class="input" id="csvFile" type="file" accept=".csv,text/csv" />
-              </div>
-
-              <div class="note">
-                <b>Encabezados recomendados</b> (una fila por estudiante):<br/>
-                <code>tipoDoc,documento,nombres,apellidos,grado,curso,jornada,edad,correo,telefono,direccion</code><br/><br/>
-                Puedes usar coma <b>,</b> o punto y coma <b>;</b>.
-              </div>
-
-              <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="btn" id="btnImportarCSV">Importar CSV</button>
-                <button class="btn btn-ghost" id="btnDescargarPlantillaCSV">Descargar plantilla CSV</button>
-              </div>
-
-              <div id="msgSecretaria2" class="msg" style="display:none"></div>
-            </div>
-          </div>
-
-          <p class="hint">Siguiente paso: vista Docente para cargar estudiantes del curso y registrar notas por período.</p>
+          <button class="btn" data-back>Volver</button>
         </div>
-      </div>
 
-    </div>
-  </div>
+        <div class="grid2">
+          <!-- Registro individual -->
+          <div class="box">
+            <h3>Registro individual</h3>
+            <p class="muted small">Campos obligatorios: Documento, Nombres, Apellidos, Grado y Curso.</p>
+
+            <div class="formGrid">
+              <label>
+                Tipo doc
+                <select id="stTipoDoc">
+                  <option value="TI">TI</option>
+                  <option value="CC">CC</option>
+                  <option value="RC">RC</option>
+                  <option value="CE">CE</option>
+                  <option value="PA">PA</option>
+                </select>
+              </label>
+
+              <label>
+                Documento *
+                <input id="stDocumento" type="text" placeholder="1087..." />
+              </label>
+
+              <label>
+                Nombres *
+                <input id="stNombres" type="text" placeholder="Nombres" />
+              </label>
+
+              <label>
+                Apellidos *
+                <input id="stApellidos" type="text" placeholder="Apellidos" />
+              </label>
+
+              <label>
+                Grado * (0-11)
+                <input id="stGrado" type="number" min="0" max="11" placeholder="0..11" />
+              </label>
+
+              <label>
+                Curso * (ej: 0A, 1A, 5A, 10A)
+                <input id="stCurso" type="text" placeholder="5A" />
+              </label>
+
+              <label>
+                Jornada
+                <select id="stJornada">
+                  <option value="Mañana">Mañana</option>
+                  <option value="Tarde">Tarde</option>
+                  <option value="Noche">Noche</option>
+                  <option value="Única">Única</option>
+                </select>
+              </label>
+
+              <label>
+                Nacimiento
+                <input id="stNacimiento" type="date" />
+              </label>
+
+              <label>
+                Edad
+                <input id="stEdad" type="number" min="0" max="30" placeholder="10" />
+              </label>
+
+              <label>
+                Correo
+                <input id="stCorreo" type="email" placeholder="acudiente@correo.com" />
+              </label>
+
+              <label>
+                Teléfono
+                <input id="stTelefono" type="text" placeholder="311..." />
+              </label>
+
+              <label class="span2">
+                Dirección
+                <input id="stDireccion" type="text" placeholder="Barrio / Vereda" />
+              </label>
+            </div>
+
+            <div class="row">
+              <button id="btnGuardarEstudiante" class="btn primary">Guardar estudiante</button>
+              <button id="btnLimpiarEstudiante" class="btn">Limpiar</button>
+            </div>
+
+            <div id="msgSecretaria1" class="msg" style="display:none;"></div>
+          </div>
+
+          <!-- Carga masiva CSV -->
+          <div class="box">
+            <h3>Carga masiva (CSV)</h3>
+            <p class="muted small">
+              Descarga la plantilla, llénala y luego súbela.  
+              El sistema actualizará/creará estudiantes en la colección <b>estudiantes</b>.
+            </p>
+
+            <div class="row">
+              <button id="btnDescargarPlantillaCSV" class="btn">Descargar plantilla CSV</button>
+            </div>
+
+            <label class="file">
+              Seleccionar archivo CSV
+              <input id="csvFile" type="file" accept=".csv" />
+            </label>
+
+            <div class="row">
+              <button id="btnImportarCSV" class="btn primary">Importar CSV</button>
+            </div>
+
+            <div id="msgSecretaria2" class="msg" style="display:none;"></div>
+
+            <div class="note">
+              <b>Formato esperado (encabezados):</b><br/>
+              tipoDoc,documento,nombres,apellidos,grado,curso,jornada,edad,correo,telefono,direccion
+            </div>
+          </div>
+        </div>
+
+        <footer class="foot">© <span id="year2"></span> IE Imbilí Carretera</footer>
+      </section>
+
+      <!-- DOCENTE -->
+      <section id="viewDocente" class="view">
+        <div class="panelHead">
+          <div>
+            <h2>Docente • Registro de notas</h2>
+            <p class="muted">Elige curso, período y materia. Verás estudiantes cargados y podrás guardar notas.</p>
+          </div>
+          <button class="btn" data-back>Volver</button>
+        </div>
+
+        <div class="box" style="margin-top:14px;">
+          <h3>Filtros</h3>
+
+          <div class="formGrid">
+            <label>
+              Curso *
+              <select id="dcCurso">
+                <option value="">-- Selecciona --</option>
+              </select>
+            </label>
+
+            <label>
+              Período *
+              <select id="dcPeriodo">
+                <option value="">-- Selecciona --</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
+
+            <label class="span2">
+              Materia *
+              <input id="dcMateria" type="text" placeholder="Ej: Matemáticas" />
+            </label>
+          </div>
+
+          <div class="row">
+            <button id="btnCargarEstudiantes" class="btn primary">Cargar estudiantes</button>
+            <button id="btnGuardarNotas" class="btn">Guardar notas</button>
+          </div>
+
+          <div id="msgDocente" class="msg" style="display:none;"></div>
+        </div>
+
+        <div class="box" style="margin-top:14px;">
+          <div class="row" style="justify-content:space-between;">
+            <h3 style="margin:0;">Estudiantes del curso</h3>
+            <div class="muted small" id="dcInfo">0 estudiantes</div>
+          </div>
+
+          <div class="tableWrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width:140px;">Documento</th>
+                  <th>Nombre</th>
+                  <th style="width:130px;">Nota (0-5)</th>
+                </tr>
+              </thead>
+              <tbody id="dcTbody">
+                <tr><td colspan="3" class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <footer class="foot">© <span id="year3"></span> IE Imbilí Carretera</footer>
+      </section>
+
+    </section>
+  </main>
+
+  <script>
+    const y = new Date().getFullYear();
+    const a = document.getElementById("year"); if(a) a.textContent = y;
+    const b = document.getElementById("year2"); if(b) b.textContent = y;
+    const c = document.getElementById("year3"); if(c) c.textContent = y;
+  </script>
 
   <script type="module" src="app.js"></script>
 </body>

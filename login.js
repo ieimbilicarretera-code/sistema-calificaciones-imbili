@@ -4,24 +4,17 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   updatePassword,
-  onAuthStateChanged,
-  signOut
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
   getFirestore,
   doc,
-  getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  limit
+  getDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
-   Firebase config (calificaciones-imbili)
+   Firebase Config (calificaciones-imbili)
    ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
@@ -42,8 +35,6 @@ const db = getFirestore(app);
 const yearEl = document.getElementById("year");
 yearEl.textContent = new Date().getFullYear();
 
-const instName = document.getElementById("instName");
-
 const loginView = document.getElementById("loginView");
 const forgotView = document.getElementById("forgotView");
 const forceChangeView = document.getElementById("forceChangeView");
@@ -61,8 +52,9 @@ const forgotMsg = document.getElementById("forgotMsg");
 const newPass1 = document.getElementById("newPass1");
 const newPass2 = document.getElementById("newPass2");
 const btnUpdatePass = document.getElementById("btnUpdatePass");
-const btnBackToLogin2 = document.getElementById("btnBackToLogin2");
 const changeMsg = document.getElementById("changeMsg");
+
+const instName = document.getElementById("instName");
 
 /* =========================
    Helpers
@@ -92,28 +84,6 @@ async function loadInstitutionName(){
 }
 loadInstitutionName();
 
-async function getUserProfileByUidOrEmail(uid, email){
-  // 1) Intentar por UID
-  const snapByUid = await getDoc(doc(db, "usuarios", uid));
-  if(snapByUid.exists()){
-    return { id: uid, data: snapByUid.data() };
-  }
-
-  // 2) Intentar por correo (si tu documento no quedó con ID = uid)
-  const q = query(
-    collection(db, "usuarios"),
-    where("correo", "==", email),
-    limit(1)
-  );
-  const qs = await getDocs(q);
-  if(!qs.empty){
-    const d = qs.docs[0];
-    return { id: d.id, data: d.data() };
-  }
-
-  return null;
-}
-
 /* =========================
    Login
    ========================= */
@@ -129,25 +99,21 @@ btnLogin.addEventListener("click", async () => {
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
 
-    const profilePack = await getUserProfileByUidOrEmail(cred.user.uid, email);
-    if(!profilePack){
+    const uid = cred.user.uid;
+    const userSnap = await getDoc(doc(db, "usuarios", uid));
+
+    if(!userSnap.exists()){
       alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-      await signOut(auth);
       return;
     }
 
-    const profile = profilePack.data;
+    const profile = userSnap.data();
 
     if(profile.activo !== true){
       alert("Usuario inactivo. Contacta a soporte.");
-      await signOut(auth);
       return;
     }
 
-    // Guardamos el ID del doc perfil (por si no coincide con UID)
-    sessionStorage.setItem("profileDocId", profilePack.id);
-
-    // Si debe cambiar contraseña
     if(profile.mustChangePassword === true){
       show(forceChangeView);
       setMsg(changeMsg, "");
@@ -155,6 +121,7 @@ btnLogin.addEventListener("click", async () => {
     }
 
     window.location.href = "app.html";
+
   }catch(err){
     console.error(err);
     alert("Error al ingresar. Verifica tu correo y contraseña.");
@@ -171,8 +138,9 @@ linkForgot.addEventListener("click", (e) => {
   forgotEmail.value = (emailEl.value || "").trim();
 });
 
-btnBackLogin.addEventListener("click", () => show(loginView));
-btnBackToLogin2.addEventListener("click", () => show(loginView));
+btnBackLogin.addEventListener("click", () => {
+  show(loginView);
+});
 
 btnSendReset.addEventListener("click", async () => {
   const email = (forgotEmail.value || "").trim();
@@ -191,7 +159,7 @@ btnSendReset.addEventListener("click", async () => {
 });
 
 /* =========================
-   Cambio obligatorio de contraseña
+   Cambio obligatorio
    ========================= */
 btnUpdatePass.addEventListener("click", async () => {
   const p1 = newPass1.value || "";
@@ -215,11 +183,12 @@ btnUpdatePass.addEventListener("click", async () => {
 
     await updatePassword(auth.currentUser, p1);
 
-    // Marcar en app.html que ya cambió
+    // marca local para que app.html actualice mustChangePassword=false
     localStorage.setItem("justChangedPassword", "1");
 
     setMsg(changeMsg, "Proceso exitoso. Continuando...", true);
     setTimeout(() => window.location.href = "app.html", 700);
+
   }catch(err){
     console.error(err);
     setMsg(changeMsg, "No se pudo cambiar. Vuelve a iniciar sesión y reintenta.", false);
@@ -227,8 +196,8 @@ btnUpdatePass.addEventListener("click", async () => {
 });
 
 /* =========================
-   Si ya está logueado -> app
+   Si ya está logueado
    ========================= */
-onAuthStateChanged(auth, (user) => {
-  // si está logueado y no está en cambio obligatorio, app se encargará
+onAuthStateChanged(auth, async (user) => {
+  // No redirigimos automáticamente aquí para no romper el flujo de cambio obligatorio.
 });

@@ -13,7 +13,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
-   Firebase config (calificaciones-imbili)
+   Firebase config
    ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
@@ -29,168 +29,156 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /* =========================
-   UI
+   UI refs
    ========================= */
-const yearEl = document.getElementById("year");
-yearEl.textContent = new Date().getFullYear();
-
-const instNameEl = document.getElementById("instName");
-const userNameEl = document.getElementById("userName");
-const userRoleEl = document.getElementById("userRole");
-const anioLectivoEl = document.getElementById("anioLectivo");
+const instName = document.getElementById("instName");
+const userName = document.getElementById("userName");
+const userRole = document.getElementById("userRole");
+const anioEl = document.getElementById("anio");
 const periodosEl = document.getElementById("periodos");
 const modulesGrid = document.getElementById("modulesGrid");
 const btnLogout = document.getElementById("btnLogout");
 
-btnLogout.addEventListener("click", async () => {
-  await signOut(auth);
-  window.location.href = "index.html";
-});
-
-function normalizeRole(r){
-  const role = (r || "").toString().trim().toLowerCase();
-  if(role === "docente") return "docente";
-  if(role === "secretaria" || role === "secretaría") return "secretaria";
-  if(role === "rectoria" || role === "rectoría" || role === "rector" || role === "rectora") return "rectoria";
-  if(role === "soporte" || role === "sistemas" || role === "admin") return "soporte";
-  if(role === "coordinador" || role === "coordinador académico") return "coordinador";
-  return role || "sin-rol";
+/* =========================
+   Helpers
+   ========================= */
+function normRole(role){
+  return (role || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
-function moduleButton(tag, name, desc, onClick){
-  const btn = document.createElement("button");
-  btn.className = "moduleBtn";
-  btn.type = "button";
-  btn.innerHTML = `
-    <span class="moduleTag">${tag}</span>
-    <div class="moduleName">${name}</div>
-    <p class="moduleDesc">${desc}</p>
+function moduleCard({pill, title, desc, buttonText, onClick}){
+  const el = document.createElement("div");
+  el.className = "module";
+  el.innerHTML = `
+    <div class="pill">${pill}</div>
+    <div>
+      <h3>${title}</h3>
+      <p>${desc}</p>
+    </div>
+    <div class="actions">
+      <button class="btn" type="button">${buttonText}</button>
+    </div>
   `;
-  btn.addEventListener("click", onClick);
-  return btn;
+  el.querySelector("button").addEventListener("click", onClick);
+  return el;
+}
+
+async function loadConfig(){
+  try{
+    const snap = await getDoc(doc(db, "config", "general"));
+    if(snap.exists()){
+      const data = snap.data();
+      if(data?.institucion) instName.textContent = data.institucion;
+      if(data?.añoLectivoActual) anioEl.textContent = data.añoLectivoActual;
+      if(data?.periodos) periodosEl.textContent = data.periodos;
+    }
+  }catch(e){
+    // no bloquea
+  }
 }
 
 function renderModulesByRole(role){
   modulesGrid.innerHTML = "";
 
-  if(role === "docente"){
-    modulesGrid.appendChild(moduleButton(
-      "Docente",
-      "Registro de notas",
-      "Selecciona curso, período y materia. Registra notas y guarda en Firestore.",
-      () => alert("Siguiente paso: creamos la pantalla registro-notas.html")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Docente",
-      "Listados por curso",
-      "Descarga listado de estudiantes (plantilla) por curso para planilla manual.",
-      () => alert("Siguiente paso: generamos listado por curso (CSV/Excel/PDF)")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Docente",
-      "Consolidado",
-      "Descarga consolidado (CSV) del curso/período/materia seleccionados.",
-      () => alert("Siguiente paso: consolidado por curso/periodo/materia")
-    ));
+  const r = normRole(role);
+
+  // DOCENTE
+  if(r === "docente"){
+    modulesGrid.appendChild(moduleCard({
+      pill: "Docente",
+      title: "Registro de notas",
+      desc: "Selecciona curso, período y materia. Registra notas y guarda en Firestore.",
+      buttonText: "Abrir",
+      onClick: () => window.location.href = "docente.html"
+    }));
+
+    modulesGrid.appendChild(moduleCard({
+      pill: "Docente",
+      title: "Listados por curso",
+      desc: "Descarga listado de estudiantes (plantilla) por curso para planilla manual.",
+      buttonText: "Ver",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
+
+    modulesGrid.appendChild(moduleCard({
+      pill: "Docente",
+      title: "Consolidado",
+      desc: "Descarga consolidado (CSV/Excel/PDF) del curso/período/materia seleccionados.",
+      buttonText: "Ver",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
+
     return;
   }
 
-  if(role === "secretaria"){
-    modulesGrid.appendChild(moduleButton(
-      "Secretaría",
-      "Estudiantes",
-      "Registrar estudiantes individual o masivo (Excel/CSV).",
-      () => alert("Siguiente paso: módulo de estudiantes (carga masiva)")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Secretaría",
-      "Cursos y grados",
-      "Crear/editar cursos, asignar director(a) de grupo y jornada.",
-      () => alert("Siguiente paso: módulo cursos/grados")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Secretaría",
-      "Planillas y sábanas",
-      "Generar planillas y revisar sábanas para boletines.",
-      () => alert("Siguiente paso: planillas/sábanas")
-    ));
+  // SECRETARÍA / RECTORÍA / COORDINADOR
+  if(["secretaria","rectoria","coordinador","coordinador academico"].includes(r)){
+    modulesGrid.appendChild(moduleCard({
+      pill: "Administrativo",
+      title: "Gestión de estudiantes",
+      desc: "Registro individual y masivo (Excel/archivo plano). Organización por curso.",
+      buttonText: "Abrir",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
+
+    modulesGrid.appendChild(moduleCard({
+      pill: "Administrativo",
+      title: "Planillas / Sábanas",
+      desc: "Genera listados de asistencia y sábanas por curso.",
+      buttonText: "Abrir",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
+
+    modulesGrid.appendChild(moduleCard({
+      pill: "Administrativo",
+      title: "Boletines",
+      desc: "Genera boletines por estudiante y curso (PDF).",
+      buttonText: "Abrir",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
+
     return;
   }
 
-  if(role === "rectoria"){
-    modulesGrid.appendChild(moduleButton(
-      "Rectoría",
-      "Reportes",
-      "Consultar avance y reportes generales por curso/periodo.",
-      () => alert("Siguiente paso: reportes rectoría")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Rectoría",
-      "Autorizaciones",
-      "Autorizar solicitudes de modificación de notas (previa petición).",
-      () => alert("Siguiente paso: autorizaciones")
-    ));
+  // SOPORTE
+  if(["soporte","admin"].includes(r)){
+    modulesGrid.appendChild(moduleCard({
+      pill: "Sistemas",
+      title: "Usuarios y permisos",
+      desc: "Crear/editar usuarios, asignar roles y autorizar solicitudes.",
+      buttonText: "Abrir",
+      onClick: () => alert("Este módulo se construye en el siguiente paso.")
+    }));
     return;
   }
 
-  if(role === "soporte"){
-    modulesGrid.appendChild(moduleButton(
-      "Soporte",
-      "Usuarios",
-      "Crear/modificar usuarios y asignar roles/permisos.",
-      () => alert("Siguiente paso: módulo de usuarios (admin)")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Soporte",
-      "Solicitudes",
-      "Aprobar solicitudes de modificación (con autorización rectoría).",
-      () => alert("Siguiente paso: solicitudes")
-    ));
-    modulesGrid.appendChild(moduleButton(
-      "Soporte",
-      "Configuración",
-      "Año lectivo, períodos, parámetros del sistema.",
-      () => alert("Siguiente paso: configuración")
-    ));
-    return;
-  }
-
-  modulesGrid.appendChild(moduleButton(
-    "Sistema",
-    "Sin módulos",
-    "Tu rol no tiene módulos asignados. Contacta a soporte.",
-    () => {}
-  ));
+  // Sin rol
+  modulesGrid.appendChild(moduleCard({
+    pill: "Info",
+    title: "Sin rol asignado",
+    desc: "Tu usuario no tiene rol válido. Contacta a soporte para asignar permisos.",
+    buttonText: "Entendido",
+    onClick: () => {}
+  }));
 }
 
 /* =========================
-   Load config + profile
+   Logout
    ========================= */
-async function loadConfig(){
-  try{
-    const snap = await getDoc(doc(db, "config", "general"));
-    if(snap.exists()){
-      const c = snap.data();
-      if(c?.institucion) instNameEl.textContent = String(c.institucion).toUpperCase();
-      if(c?.añoLectivoActual) anioLectivoEl.textContent = c.añoLectivoActual;
-      if(c?.periodos) periodosEl.textContent = c.periodos;
-    }
-  }catch(e){
-    // silencioso
-  }
-}
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
+});
 
-async function clearMustChangePasswordIfNeeded(uid){
-  try{
-    const flag = localStorage.getItem("justChangedPassword");
-    if(flag === "1"){
-      await updateDoc(doc(db, "usuarios", uid), { mustChangePassword: false });
-      localStorage.removeItem("justChangedPassword");
-    }
-  }catch(e){
-    // silencioso
-  }
-}
+/* =========================
+   Init
+   ========================= */
+loadConfig();
 
 onAuthStateChanged(auth, async (user) => {
   if(!user){
@@ -198,34 +186,28 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  await loadConfig();
-
-  const uid = user.uid;
-
-  await clearMustChangePasswordIfNeeded(uid);
-
-  const userSnap = await getDoc(doc(db, "usuarios", uid));
-  if(!userSnap.exists()){
+  // Cargar perfil
+  const snap = await getDoc(doc(db, "usuarios", user.uid));
+  if(!snap.exists()){
     alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
     await signOut(auth);
     window.location.href = "index.html";
     return;
   }
 
-  const profile = userSnap.data();
+  const profile = snap.data();
+  userName.textContent = profile.nombre || user.email || "Usuario";
+  userRole.textContent = (profile.rol || "sin rol").toString().toLowerCase();
 
-  if(profile.activo !== true){
-    alert("Usuario inactivo. Contacta a soporte.");
-    await signOut(auth);
-    window.location.href = "index.html";
-    return;
+  // Si venimos de cambiar contraseña, bajamos el flag mustChangePassword
+  if(localStorage.getItem("justChangedPassword") === "1"){
+    try{
+      await updateDoc(doc(db, "usuarios", user.uid), { mustChangePassword: false });
+    }catch(e){
+      // si falla, lo revisamos luego
+    }
+    localStorage.removeItem("justChangedPassword");
   }
 
-  const nombre = profile.nombre || profile.Nombre || user.email || "Usuario";
-  const role = normalizeRole(profile.rol || profile.Rol || "");
-
-  userNameEl.textContent = nombre;
-  userRoleEl.textContent = role;
-
-  renderModulesByRole(role);
+  renderModulesByRole(profile.rol);
 });

@@ -2,87 +2,85 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Ingreso | Sistema de calificaciones - IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IE Imbilí Carretera | Sistema de Calificaciones</title>
+  <link rel="stylesheet" href="styles.css"/>
 </head>
-<body>
-  <div class="page">
-    <div class="card small">
 
-      <div class="brand">
-        <img src="logo-ie.png" class="logo-ie" alt="IE Imbilí Carretera">
-        <div>
+<body>
+  <div class="bg"></div>
+
+  <main class="wrap">
+    <section class="card">
+      <header class="brand">
+        <img class="logo" src="logo.png" alt="IE Imbilí Carretera" onerror="this.style.display='none'">
+        <div class="brandText">
           <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-          <p>Sistema de calificaciones</p>
+          <p class="sub">Sistema de calificaciones</p>
         </div>
-      </div>
+      </header>
 
       <!-- LOGIN -->
       <div id="loginView">
-        <div class="field">
-          <label>Correo</label>
+        <h2 class="sectionTitle">Ingreso</h2>
+
+        <label class="field">
+          <span>Correo</span>
           <input id="email" type="email" placeholder="usuario@correo.com" autocomplete="username">
-        </div>
+        </label>
 
-        <div class="field" style="margin-top:10px;">
-          <label>Contraseña</label>
+        <label class="field">
+          <span>Contraseña</span>
           <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
-        </div>
+        </label>
 
-        <div class="actions">
-          <button class="btn" id="btnLogin">Ingresar</button>
-          <a href="#" id="linkForgot">Olvidé mi contraseña</a>
-        </div>
+        <button id="btnLogin" class="btn primary">Ingresar</button>
+
+        <button id="linkForgot" class="link">Olvidé mi contraseña</button>
       </div>
 
       <!-- OLVIDÉ CONTRASEÑA -->
       <div id="forgotView" class="hidden">
-        <h2 style="margin:0 0 6px 0; font-size:16px;">Recuperación de contraseña</h2>
-        <p class="muted">Ingresa tu correo. Se enviará un enlace para restablecer.</p>
+        <h2 class="sectionTitle">Recuperar contraseña</h2>
+        <p class="hint">
+          Escribe tu correo institucional. Te enviaremos un enlace para restablecer tu contraseña.
+        </p>
 
-        <div class="field" style="margin-top:10px;">
-          <label>Correo</label>
-          <input id="forgotEmail" type="email" placeholder="usuario@correo.com">
-        </div>
+        <label class="field">
+          <span>Correo</span>
+          <input id="forgotEmail" type="email" placeholder="usuario@correo.com" autocomplete="email">
+        </label>
 
-        <div class="actions">
-          <button class="btn" id="btnSendReset">Enviar</button>
-          <button class="btn secondary" id="btnBackLogin">Volver</button>
-        </div>
+        <button id="btnSendReset" class="btn primary">Enviar enlace</button>
+        <button id="btnBackLogin" class="btn ghost">Volver</button>
 
-        <p class="info" id="forgotMsg"></p>
+        <div id="forgotMsg" class="info"></div>
       </div>
 
       <!-- CAMBIO OBLIGATORIO -->
       <div id="forceChangeView" class="hidden">
-        <h2 style="margin:0 0 6px 0; font-size:16px;">Debes cambiar tu contraseña</h2>
-        <p class="muted">Por seguridad, configura una nueva contraseña.</p>
+        <h2 class="sectionTitle">Cambio de contraseña</h2>
+        <p class="hint">Por seguridad, debes establecer una nueva contraseña para continuar.</p>
 
-        <div class="row" style="margin-top:10px;">
-          <div class="field">
-            <label>Nueva contraseña</label>
-            <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres">
-          </div>
-          <div class="field">
-            <label>Confirmar contraseña</label>
-            <input id="newPass2" type="password" placeholder="Repite la contraseña">
-          </div>
-        </div>
+        <label class="field">
+          <span>Nueva contraseña</span>
+          <input id="newPass1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        </label>
 
-        <div class="actions">
-          <button class="btn" id="btnUpdatePass">Actualizar</button>
-          <button class="btn secondary" id="btnBackToLogin2">Volver</button>
-        </div>
+        <label class="field">
+          <span>Confirmar contraseña</span>
+          <input id="newPass2" type="password" placeholder="Repite la contraseña" autocomplete="new-password">
+        </label>
 
-        <p class="info" id="changeMsg"></p>
+        <button id="btnUpdatePass" class="btn primary">Actualizar</button>
+        <div id="changeMsg" class="info"></div>
       </div>
 
-      <div class="footer">
-        © <span id="year"></span> IE Imbilí Carretera
-      </div>
-    </div>
-  </div>
+      <footer class="footer">
+        <span>© <span id="year"></span> IE Imbilí Carretera</span>
+      </footer>
+    </section>
+  </main>
 
   <script type="module" src="login.js"></script>
 </body>

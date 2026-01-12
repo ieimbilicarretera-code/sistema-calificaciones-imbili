@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
   getAuth,
-  onAuthStateChanged
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 import {
@@ -13,8 +14,8 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
@@ -34,602 +35,496 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /* =========================
-   UI
+   UI refs
    ========================= */
+const yearEl = document.getElementById("year");
+yearEl.textContent = new Date().getFullYear();
+
+const instNameEl = document.getElementById("instName");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
+const anioEl = document.getElementById("anioLectivo");
+const periodosEl = document.getElementById("periodos");
+
 const selCurso = document.getElementById("selCurso");
 const selPeriodo = document.getElementById("selPeriodo");
 const selMateria = document.getElementById("selMateria");
 
 const btnCargar = document.getElementById("btnCargar");
-const btnAgregarActividad = document.getElementById("btnAgregarActividad");
 const btnGuardar = document.getElementById("btnGuardar");
-const btnDescargarCSV = document.getElementById("btnDescargarCSV");
+const btnAgregarActividad = document.getElementById("btnAgregarActividad");
+const btnVolver = document.getElementById("btnVolver");
 
-const studentsList = document.getElementById("studentsList");
-const countStudents = document.getElementById("countStudents");
-const msg = document.getElementById("msg");
-
-/* =========================
-   Estado
-   ========================= */
-let currentUser = null;
-let currentProfile = null;
-
-let configGeneral = { añoLectivo: 2025, periodos: 4, institucion: "" };
-
-let materiasCache = [];     // [{id, nombre, grado}]
-let planActividades = [];   // [{id, nombre}]
-let estudiantes = [];       // [{documento,nombres,apellidos,curso,grado}]
-let notasLocal = {};        // { [docEst]: { actividades: { [actId]: {nota, obs} } } }
+const msgEl = document.getElementById("msg");
+const studentsWrap = document.getElementById("studentsWrap");
+const infoFiltro = document.getElementById("infoFiltro");
+const countEst = document.getElementById("countEst");
 
 /* =========================
-   Helpers UI
+   State
    ========================= */
-function showMsg(text, type="") {
-  msg.style.display = text ? "block" : "none";
-  msg.className = "msg " + (type || "");
-  msg.textContent = text || "";
+let CFG = { institucion: "", añoLectivo: 2025, periodos: 4 };
+let PROFILE = null;
+
+let cursosCache = [];          // [{id:"11A", grado:11, jornada:"Mañana", nombre:"11A"}]
+let estudiantesCache = [];     // [{id, documento, nombreCompleto}]
+let materiasCache = [];        // [{id, nombre, grado}]
+let actividades = [];          // [{id, nombre}]
+let notasByEst = new Map();    // estId -> { actividades: {actId:{nota,obs}} }
+
+/* =========================
+   Helpers
+   ========================= */
+function showMsg(text, type="ok"){
+  msgEl.style.display = text ? "block" : "none";
+  msgEl.className = "msg " + (type || "");
+  msgEl.textContent = text || "";
+}
+function normalizeRole(r){
+  return String(r || "").trim().toLowerCase();
+}
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+function slugId(){
+  return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
-function escapeCSV(v){
-  const s = String(v ?? "");
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replaceAll('"','""')}"`;
-  }
-  return s;
+function getCursoSelected(){
+  const cursoId = selCurso.value;
+  const curso = cursosCache.find(c => c.id === cursoId) || null;
+  return curso;
 }
 
-function downloadText(filename, text){
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function courseToGrade(courseName){
-  // "11A" -> 11, "0A" -> 0
-  const m = String(courseName || "").match(/^\d+/);
-  return m ? Number(m[0]) : null;
-}
-
-function makeId(prefix="act"){
-  return prefix + "_" + Math.random().toString(16).slice(2) + "_" + Date.now();
-}
-
-function calcDefinitiva(actMap){
-  // promedio de notas válidas
-  const notas = Object.values(actMap || {})
-    .map(x => Number(x?.nota))
-    .filter(n => !Number.isNaN(n) && n >= 0 && n <= 5);
-
-  if (!notas.length) return null;
-  const avg = notas.reduce((a,b)=>a+b,0) / notas.length;
-  return Math.round(avg * 100) / 100; // 2 dec
-}
-
-function setLocalNota(docEst, actId, nota){
-  if(!notasLocal[docEst]) notasLocal[docEst] = { actividades: {} };
-  if(!notasLocal[docEst].actividades[actId]) notasLocal[docEst].actividades[actId] = { nota:"", obs:"" };
-  notasLocal[docEst].actividades[actId].nota = nota;
-}
-
-function setLocalObs(docEst, actId, obs){
-  if(!notasLocal[docEst]) notasLocal[docEst] = { actividades: {} };
-  if(!notasLocal[docEst].actividades[actId]) notasLocal[docEst].actividades[actId] = { nota:"", obs:"" };
-  notasLocal[docEst].actividades[actId].obs = obs;
+function materiaLabel(m){
+  return m?.nombre || "(Sin materia)";
 }
 
 /* =========================
-   Cargar config general + cursos
+   Cargar config + perfil
    ========================= */
-async function loadConfig(){
-  try{
-    const snap = await getDoc(doc(db, "config", "general"));
-    if(snap.exists()){
-      configGeneral = { ...configGeneral, ...snap.data() };
-    }
-  }catch(e){
-    // no pasa nada
+async function loadConfigGeneral(){
+  const snap = await getDoc(doc(db, "config", "general"));
+  if(snap.exists()){
+    CFG = snap.data();
+    if(CFG?.institucion) instNameEl.textContent = CFG.institucion;
+    if(CFG?.añoLectivo != null) anioEl.textContent = String(CFG.añoLectivo);
+    if(CFG?.periodos != null) periodosEl.textContent = String(CFG.periodos);
   }
 }
 
+async function loadUserProfile(uid){
+  const snap = await getDoc(doc(db, "usuarios", uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+/* =========================
+   Cursos
+   ========================= */
 async function loadCursos(){
-  // carga todos los cursos de la colección "cursos"
-  // si tienes añoLectivo como campo, lo filtramos
-  const cursos = [];
-  const qy = query(collection(db, "cursos"), orderBy("nombre"));
-  const snap = await getDocs(qy);
+  selCurso.innerHTML = `<option value="">Cargando cursos...</option>`;
+
+  const snap = await getDocs(collection(db, "cursos"));
+  const list = [];
+
   snap.forEach(d => {
-    const data = d.data();
-    // si manejas añoLectivo, respétalo
-    if(data?.añoLectivo && configGeneral?.añoLectivo && Number(data.añoLectivo) !== Number(configGeneral.añoLectivo)) return;
-    cursos.push({ id: d.id, ...data });
+    const x = d.data() || {};
+    // d.id es "11A" etc.
+    list.push({
+      id: d.id,
+      nombre: x.nombre || d.id,
+      grado: (typeof x.grado === "number") ? x.grado : Number(x.grado),
+      jornada: x.jornada || "",
+      añoLectivo: x.añoLectivo ?? CFG.añoLectivo
+    });
   });
 
-  // si en tu colección el "nombre" es "11A", úsalo
-  cursos.sort((a,b)=> String(a.nombre||a.id).localeCompare(String(b.nombre||b.id), "es"));
+  // Ordenar local (sin orderBy para evitar índices)
+  list.sort((a,b) => (a.grado - b.grado) || (a.id.localeCompare(b.id)));
+  cursosCache = list;
 
-  selCurso.innerHTML = "";
-  cursos.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = String(c.nombre || c.id);
-    opt.textContent = String(c.nombre || c.id);
-    selCurso.appendChild(opt);
-  });
-
-  if (!selCurso.value && cursos.length) selCurso.value = String(cursos[0].nombre || cursos[0].id);
-}
-
-function fillPeriodos(){
-  const p = Number(configGeneral?.periodos || 4);
-  selPeriodo.innerHTML = "";
-  for(let i=1;i<=p;i++){
-    const opt = document.createElement("option");
-    opt.value = String(i);
-    opt.textContent = String(i);
-    selPeriodo.appendChild(opt);
-  }
+  selCurso.innerHTML = `<option value="">Selecciona...</option>` +
+    list.map(c => `<option value="${c.id}">${c.id} (${c.jornada || "Jornada"})</option>`).join("");
 }
 
 /* =========================
-   Materias (desde Firestore)
+   Materias por grado (desde Firestore)
    ========================= */
-async function loadMateriasForGrade(grado){
+async function loadMateriasByGrado(grado){
   selMateria.innerHTML = `<option value="">Cargando materias...</option>`;
   materiasCache = [];
 
   try{
-    // OJO: tú tienes campo "activa: true" (según tu captura)
-    // pero por si acaso manejamos "activo" también.
-    const q1 = query(
+    // IMPORTANTE: sin orderBy (evita índice). Luego ordenamos aquí.
+    const q = query(
       collection(db, "materias"),
+      where("activa", "==", true),
       where("grado", "==", Number(grado))
     );
 
-    const snap = await getDocs(q1);
-    snap.forEach(d => {
-      const data = d.data();
-      const isActive = (data?.activa === true) || (data?.activo === true) || (data?.activa == null && data?.activo == null);
-      if(!isActive) return;
+    const snap = await getDocs(q);
+    const list = [];
 
-      materiasCache.push({
+    snap.forEach(d => {
+      const x = d.data() || {};
+      list.push({
         id: d.id,
-        nombre: data?.nombre || d.id,
-        grado: data?.grado
+        nombre: x.nombre || "(Sin nombre)",
+        grado: x.grado
       });
     });
 
-    materiasCache.sort((a,b)=> String(a.nombre).localeCompare(String(b.nombre), "es"));
+    list.sort((a,b)=> String(a.nombre).localeCompare(String(b.nombre)));
+    materiasCache = list;
 
-    selMateria.innerHTML = "";
-    if(!materiasCache.length){
-      selMateria.innerHTML = `<option value="">(No hay materias activas para grado ${grado})</option>`;
-      return;
+    selMateria.innerHTML =
+      `<option value="">Selecciona...</option>` +
+      list.map(m => `<option value="${m.id}">${m.nombre}</option>`).join("");
+
+    if(list.length === 0){
+      selMateria.innerHTML = `<option value="">No hay materias para grado ${grado}</option>`;
     }
-
-    selMateria.appendChild(new Option("Selecciona materia...", ""));
-    materiasCache.forEach(m => {
-      selMateria.appendChild(new Option(m.nombre, m.id));
-    });
-
   }catch(e){
-    console.error(e);
+    console.error("Error materias:", e);
     selMateria.innerHTML = `<option value="">-- Error cargando materias --</option>`;
-    showMsg("❌ Error cargando materias. Revisa permisos/reglas o conexión.", "err");
+    showMsg("❌ No se pudieron cargar materias. Revisa que en Firestore exista la colección 'materias' con campos: activa=true, grado (número), nombre.", "err");
   }
 }
 
 /* =========================
-   Plan de actividades (por curso+periodo+materia)
-   Guardamos lista en: planesNotas/{anio}_{curso}_{periodo}_{materiaId}
+   Estudiantes del curso
    ========================= */
-function planDocId(){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-  const anio = Number(configGeneral?.añoLectivo || 2025);
-  return `${anio}_${curso}_${periodo}_${materiaId}`;
-}
+async function loadEstudiantesDelCurso(cursoId){
+  // Consulta en estudiantes por curso
+  // OJO: para escalar, lo ideal es usar 'matriculas'. Por ahora lo dejamos simple.
+  const q = query(collection(db, "estudiantes"), where("curso", "==", cursoId));
+  const snap = await getDocs(q);
 
-async function loadPlanActividades(){
-  planActividades = [];
-  const materiaId = selMateria.value;
-  if(!materiaId) return;
-
-  try{
-    const snap = await getDoc(doc(db, "planesNotas", planDocId()));
-    if(snap.exists()){
-      const data = snap.data();
-      if(Array.isArray(data?.actividades)){
-        planActividades = data.actividades
-          .filter(a => a && a.id && a.nombre)
-          .map(a => ({ id: a.id, nombre: a.nombre }));
-      }
-    }
-  }catch(e){
-    console.error(e);
-  }
-}
-
-async function savePlanActividades(){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-
-  const grado = courseToGrade(curso);
-
-  await setDoc(doc(db, "planesNotas", planDocId()), {
-    añoLectivo: Number(configGeneral?.añoLectivo || 2025),
-    curso,
-    grado,
-    periodo: Number(periodo),
-    materiaId,
-    actividades: planActividades,
-    updatedAt: serverTimestamp(),
-    updatedBy: currentUser?.uid || ""
-  }, { merge: true });
-}
-
-/* =========================
-   Estudiantes + notas
-   ========================= */
-function notaDocIdForStudent(docEst){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-  const anio = Number(configGeneral?.añoLectivo || 2025);
-  return `${anio}_${curso}_${periodo}_${materiaId}_${docEst}`;
-}
-
-async function loadEstudiantes(){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-
-  if(!curso || !periodo || !materiaId){
-    showMsg("Completa Curso, Período y Materia.", "warn");
-    return;
-  }
-
-  showMsg("Cargando estudiantes...", "");
-  studentsList.innerHTML = `<div class="muted">Cargando...</div>`;
-  countStudents.textContent = "0";
-
-  estudiantes = [];
-  notasLocal = {};
-
-  try{
-    // Estudiantes por curso
-    const qy = query(
-      collection(db, "estudiantes"),
-      where("curso", "==", String(curso).toUpperCase()),
-      where("activo", "==", true)
-    );
-
-    const snap = await getDocs(qy);
-    snap.forEach(d => {
-      const data = d.data();
-      estudiantes.push({
-        documento: data?.documento || d.id,
-        nombres: data?.nombres || "",
-        apellidos: data?.apellidos || "",
-        curso: data?.curso || curso,
-        grado: data?.grado ?? courseToGrade(curso)
-      });
+  const list = [];
+  snap.forEach(d => {
+    const x = d.data() || {};
+    const nombres = String(x.nombres || "").trim();
+    const apellidos = String(x.apellidos || "").trim();
+    const full = `${nombres} ${apellidos}`.trim() || "(Sin nombre)";
+    list.push({
+      id: d.id, // docId = documento (en tu sistema)
+      documento: x.documento || d.id,
+      nombre: full.toUpperCase()
     });
+  });
 
-    estudiantes.sort((a,b)=> `${a.apellidos} ${a.nombres}`.localeCompare(`${b.apellidos} ${b.nombres}`, "es"));
+  list.sort((a,b)=> a.nombre.localeCompare(b.nombre));
+  estudiantesCache = list;
+  return list;
+}
 
-    countStudents.textContent = String(estudiantes.length);
+/* =========================
+   Notas (por curso/periodo/materia)
+   Estructura:
+   notas/{docId} -> {anioLectivo, cursoId, periodo, materiaId, materiaNombre, actividades:[{id,nombre}], updatedAt}
+   notas/{docId}/estudiantes/{estId} -> {documento, nombre, actividades:{actId:{nota,obs}}, definitiva, updatedAt}
+   ========================= */
+function notasDocId({anioLectivo, cursoId, periodo, materiaId}){
+  return `${anioLectivo}_${cursoId}_P${periodo}_${materiaId}`;
+}
 
-    // Cargar plan actividades
-    await loadPlanActividades();
+async function loadNotasAndActividades({anioLectivo, cursoId, periodo, materiaId}){
+  const id = notasDocId({anioLectivo, cursoId, periodo, materiaId});
 
-    // Cargar notas existentes por estudiante (una por una, para mantenerlo simple)
-    for(const st of estudiantes){
-      const noteSnap = await getDoc(doc(db, "notas", notaDocIdForStudent(st.documento)));
-      if(noteSnap.exists()){
-        const data = noteSnap.data();
-        const actividades = data?.actividades || {};
-        notasLocal[st.documento] = { actividades: {} };
+  // reset
+  actividades = [];
+  notasByEst = new Map();
 
-        for(const [actId, v] of Object.entries(actividades)){
-          notasLocal[st.documento].actividades[actId] = {
-            nota: (v?.nota ?? ""),
-            obs: (v?.obs ?? "")
-          };
-        }
-      }else{
-        notasLocal[st.documento] = { actividades: {} };
-      }
-    }
-
-    renderStudents();
-    showMsg(`✅ Listo. Estudiantes cargados del curso ${curso}.`, "ok");
-
-  }catch(e){
-    console.error(e);
-    studentsList.innerHTML = `<div class="muted">No se pudieron cargar estudiantes.</div>`;
-    showMsg("❌ Error cargando estudiantes. Revisa permisos/reglas o conexión.", "err");
+  const mainSnap = await getDoc(doc(db, "notas", id));
+  if(mainSnap.exists()){
+    const data = mainSnap.data() || {};
+    actividades = Array.isArray(data.actividades) ? data.actividades : [];
+  } else {
+    // si no existe, al menos 1 actividad por defecto
+    actividades = [{ id: slugId(), nombre: "Actividad 1" }];
   }
+
+  // cargar notas por estudiante (subcollection)
+  const subSnap = await getDocs(collection(db, "notas", id, "estudiantes"));
+  subSnap.forEach(d=>{
+    const x = d.data() || {};
+    const acts = x.actividades || {};
+    notasByEst.set(d.id, { actividades: acts });
+  });
+
+  return { id, actividades };
+}
+
+function calcDefinitiva(actMap){
+  const vals = [];
+  Object.values(actMap || {}).forEach(v=>{
+    const n = Number(v?.nota);
+    if(!isNaN(n)) vals.push(n);
+  });
+  if(vals.length === 0) return "";
+  const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+  return Math.round(avg*100)/100;
 }
 
 /* =========================
    Render
    ========================= */
 function renderStudents(){
-  if(!estudiantes.length){
-    studentsList.innerHTML = `<div class="muted">No hay estudiantes activos en este curso.</div>`;
+  studentsWrap.innerHTML = "";
+  countEst.textContent = String(estudiantesCache.length);
+
+  if(estudiantesCache.length === 0){
+    studentsWrap.innerHTML = `<div class="muted">No hay estudiantes en este curso.</div>`;
     return;
   }
 
-  const actCols = planActividades.length;
+  estudiantesCache.forEach(est=>{
+    const saved = notasByEst.get(est.id) || { actividades: {} };
 
-  studentsList.innerHTML = "";
+    // asegurar que existan keys para todas las actividades
+    const actState = { ...(saved.actividades || {}) };
+    actividades.forEach(a=>{
+      if(!actState[a.id]) actState[a.id] = { nota: "", obs: "" };
+    });
 
-  estudiantes.forEach(st => {
-    const fullName = `${st.apellidos} ${st.nombres}`.trim() || "(Sin nombre)";
-    const actMap = (notasLocal[st.documento]?.actividades) || {};
-    const definitiva = calcDefinitiva(actMap);
+    const definitiva = calcDefinitiva(actState);
 
     const card = document.createElement("div");
     card.className = "student-card";
+    card.dataset.est = est.id;
 
-    const header = document.createElement("div");
-    header.className = "student-head";
-    header.innerHTML = `
-      <div>
-        <div class="student-name">${fullName}</div>
-        <div class="student-meta">Documento: <b>${st.documento}</b> • Curso: <b>${String(st.curso).toUpperCase()}</b></div>
+    const actsHtml = actividades.map((a, idx)=>{
+      const v = actState[a.id] || { nota:"", obs:"" };
+      return `
+        <div class="act-row" data-act="${a.id}">
+          <div class="act-name">
+            <div class="muted">Actividad ${idx+1}</div>
+            <div class="act-title">${a.nombre}</div>
+          </div>
+
+          <div class="act-inputs">
+            <div class="field small">
+              <label>Nota (0-5)</label>
+              <input class="inp nota" type="number" min="0" max="5" step="0.1" value="${v.nota ?? ""}" placeholder="0.0" />
+            </div>
+            <div class="field small">
+              <label>Observación</label>
+              <input class="inp obs" type="text" value="${(v.obs ?? "")}" placeholder="Ej: Taller, examen, quiz..." />
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    card.innerHTML = `
+      <div class="student-head">
+        <div>
+          <div class="student-name">${est.nombre}</div>
+          <div class="muted">Documento: ${est.documento}</div>
+        </div>
+        <div class="def-box">
+          <div class="muted">Definitiva</div>
+          <div class="def-val">${definitiva === "" ? "--" : definitiva}</div>
+        </div>
       </div>
-      <div class="student-def">
-        <div class="muted">Definitiva</div>
-        <div class="def-num">${definitiva == null ? "—" : definitiva.toFixed(2)}</div>
+
+      <div class="act-list">
+        ${actsHtml}
       </div>
     `;
 
-    const body = document.createElement("div");
-    body.className = "student-body";
-
-    // Si no hay actividades, mostrar aviso
-    if(actCols === 0){
-      const empty = document.createElement("div");
-      empty.className = "muted";
-      empty.textContent = "Aún no hay actividades. Pulsa “+ Agregar actividad”.";
-      body.appendChild(empty);
-    }else{
-      const grid = document.createElement("div");
-      grid.className = "acts-grid";
-
-      planActividades.forEach(act => {
-        const v = actMap?.[act.id] || { nota:"", obs:"" };
-
-        const box = document.createElement("div");
-        box.className = "act-box";
-
-        box.innerHTML = `
-          <div class="act-title">${act.nombre}</div>
-          <label class="act-label">Nota (0 a 5)</label>
-          <input class="act-input" type="number" min="0" max="5" step="0.1" value="${v.nota ?? ""}" placeholder="Ej: 4.5"/>
-          <label class="act-label">Observación / Actividad</label>
-          <textarea class="act-obs" rows="2" placeholder="Ej: Taller #1, Quiz, Exposición...">${v.obs ?? ""}</textarea>
-        `;
-
-        const inputNota = box.querySelector(".act-input");
-        const inputObs = box.querySelector(".act-obs");
-
-        inputNota.addEventListener("input", () => {
-          setLocalNota(st.documento, act.id, inputNota.value);
-          // recalcular definitiva en vivo
-          const newDef = calcDefinitiva(notasLocal[st.documento].actividades);
-          card.querySelector(".def-num").textContent = (newDef == null) ? "—" : newDef.toFixed(2);
-        });
-
-        inputObs.addEventListener("input", () => {
-          setLocalObs(st.documento, act.id, inputObs.value);
-        });
-
-        grid.appendChild(box);
+    // listeners para recalcular definitiva en vivo
+    card.querySelectorAll("input.nota").forEach(inp=>{
+      inp.addEventListener("input", ()=>{
+        const st = readStudentCardState(est.id);
+        const def = calcDefinitiva(st.actividades);
+        card.querySelector(".def-val").textContent = (def === "" ? "--" : def);
       });
+    });
 
-      body.appendChild(grid);
-    }
-
-    card.appendChild(header);
-    card.appendChild(body);
-    studentsList.appendChild(card);
+    studentsWrap.appendChild(card);
   });
 }
 
-/* =========================
-   Guardar notas
-   ========================= */
-async function saveNotas(){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
+function readStudentCardState(estId){
+  const card = studentsWrap.querySelector(`.student-card[data-est="${CSS.escape(estId)}"]`);
+  const actMap = {};
 
-  if(!curso || !periodo || !materiaId){
-    showMsg("Completa Curso, Período y Materia.", "warn");
+  if(!card) return { actividades: actMap };
+
+  card.querySelectorAll(".act-row").forEach(row=>{
+    const actId = row.dataset.act;
+    const nota = row.querySelector("input.nota")?.value ?? "";
+    const obs = row.querySelector("input.obs")?.value ?? "";
+    actMap[actId] = {
+      nota: (nota === "" ? "" : Number(nota)),
+      obs: String(obs || "").trim()
+    };
+  });
+
+  return { actividades: actMap };
+}
+
+/* =========================
+   Acciones
+   ========================= */
+btnVolver.addEventListener("click", ()=>{
+  window.location.href = "app.html";
+});
+
+selCurso.addEventListener("change", async ()=>{
+  showMsg("", "");
+  studentsWrap.innerHTML = "";
+  countEst.textContent = "0";
+  infoFiltro.textContent = "Selecciona filtros y pulsa “Cargar estudiantes”.";
+
+  const curso = getCursoSelected();
+  if(!curso){
+    selMateria.innerHTML = `<option value="">Selecciona un curso primero...</option>`;
     return;
   }
-  if(!estudiantes.length){
+  await loadMateriasByGrado(curso.grado);
+});
+
+btnAgregarActividad.addEventListener("click", ()=>{
+  if(estudiantesCache.length === 0){
     showMsg("Primero carga estudiantes.", "warn");
     return;
   }
+  const nombre = prompt("Nombre de la actividad (Ej: Taller 1, Examen, Quiz):");
+  if(!nombre) return;
 
-  showMsg("Guardando notas...", "");
+  actividades.push({ id: slugId(), nombre: nombre.trim() });
+  renderStudents();
+  showMsg("✅ Actividad agregada. Recuerda guardar notas.", "ok");
+});
 
+btnCargar.addEventListener("click", async ()=>{
   try{
-    const anio = Number(configGeneral?.añoLectivo || 2025);
-    const grado = courseToGrade(curso);
-    const materiaNombre = materiasCache.find(m => m.id === materiaId)?.nombre || "";
+    showMsg("", "");
+    const curso = getCursoSelected();
+    const cursoId = curso?.id || "";
+    const periodo = Number(selPeriodo.value);
+    const materiaId = selMateria.value;
 
-    // Guardamos doc por estudiante
-    for(const st of estudiantes){
-      const docEst = st.documento;
-      const acts = notasLocal?.[docEst]?.actividades || {};
+    if(!cursoId){ showMsg("Selecciona un curso.", "warn"); return; }
+    if(!materiaId){ showMsg("Selecciona una materia.", "warn"); return; }
 
-      // normalizar notas a number cuando aplique
-      const cleaned = {};
-      for(const [actId, v] of Object.entries(acts)){
-        const notaNum = (v?.nota === "" || v?.nota == null) ? "" : Number(v.nota);
-        cleaned[actId] = {
-          nota: (notaNum === "" || Number.isNaN(notaNum)) ? "" : notaNum,
-          obs: String(v?.obs || "").trim(),
-          updatedAt: serverTimestamp()
-        };
-      }
+    const materia = materiasCache.find(m=>m.id===materiaId) || null;
 
-      const definitiva = calcDefinitiva(cleaned);
+    infoFiltro.textContent = `Curso: ${cursoId} • Período: ${periodo} • Materia: ${materiaLabel(materia)}`;
 
-      await setDoc(doc(db, "notas", notaDocIdForStudent(docEst)), {
-        añoLectivo: anio,
-        grado,
-        curso: String(curso).toUpperCase(),
-        periodo: Number(periodo),
-        materiaId,
-        materiaNombre,
-        estudianteDoc: docEst,
-        estudianteNombre: `${st.apellidos} ${st.nombres}`.trim(),
-        actividades: cleaned,
-        definitiva: (definitiva == null ? null : definitiva),
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUser?.uid || ""
+    // 1) cargar estudiantes
+    await loadEstudiantesDelCurso(cursoId);
+
+    // 2) cargar notas existentes + actividades
+    await loadNotasAndActividades({
+      anioLectivo: CFG.añoLectivo || 2025,
+      cursoId,
+      periodo,
+      materiaId
+    });
+
+    renderStudents();
+    showMsg(`✅ Listo. Estudiantes cargados del curso ${cursoId}.`, "ok");
+  }catch(e){
+    console.error(e);
+    showMsg("❌ Error cargando estudiantes/notas. Revisa consola.", "err");
+  }
+});
+
+btnGuardar.addEventListener("click", async ()=>{
+  try{
+    showMsg("", "");
+    const curso = getCursoSelected();
+    const cursoId = curso?.id || "";
+    const periodo = Number(selPeriodo.value);
+    const materiaId = selMateria.value;
+
+    if(!cursoId){ showMsg("Selecciona un curso.", "warn"); return; }
+    if(!materiaId){ showMsg("Selecciona una materia.", "warn"); return; }
+    if(estudiantesCache.length === 0){ showMsg("No hay estudiantes cargados.", "warn"); return; }
+
+    const materia = materiasCache.find(m=>m.id===materiaId) || null;
+
+    const anioLectivo = CFG.añoLectivo || 2025;
+    const mainId = notasDocId({anioLectivo, cursoId, periodo, materiaId});
+
+    // guardar doc principal (actividades)
+    await setDoc(doc(db, "notas", mainId), {
+      anioLectivo,
+      cursoId,
+      periodo,
+      materiaId,
+      materiaNombre: materia?.nombre || "",
+      actividades,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // guardar subdocs por estudiante (batch)
+    const batch = writeBatch(db);
+
+    estudiantesCache.forEach(est=>{
+      const state = readStudentCardState(est.id);
+      const definitiva = calcDefinitiva(state.actividades);
+
+      batch.set(doc(db, "notas", mainId, "estudiantes", est.id), {
+        documento: est.documento,
+        nombre: est.nombre,
+        actividades: state.actividades,
+        definitiva: (definitiva === "" ? null : definitiva),
+        updatedAt: serverTimestamp()
       }, { merge: true });
-    }
+    });
 
+    await batch.commit();
     showMsg("✅ Notas guardadas correctamente.", "ok");
   }catch(e){
     console.error(e);
-    showMsg("❌ Error guardando notas. Revisa permisos/reglas o conexión.", "err");
+    showMsg("❌ No se pudo guardar. Revisa permisos/reglas y consola.", "err");
   }
-}
-
-/* =========================
-   Agregar actividad
-   ========================= */
-async function addActividad(){
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-
-  if(!curso || !periodo || !materiaId){
-    showMsg("Completa Curso, Período y Materia antes de agregar actividad.", "warn");
-    return;
-  }
-
-  const nombre = prompt("Nombre de la actividad (Ej: Quiz 1, Taller 2, Exposición):");
-  if(!nombre) return;
-
-  planActividades.push({ id: makeId("act"), nombre: nombre.trim() });
-  await savePlanActividades();
-
-  // re-render estudiantes con la nueva actividad
-  renderStudents();
-  showMsg("✅ Actividad agregada.", "ok");
-}
-
-/* =========================
-   Descargar CSV consolidado
-   ========================= */
-function downloadCSV(){
-  if(!estudiantes.length){
-    showMsg("Primero carga estudiantes.", "warn");
-    return;
-  }
-
-  const curso = selCurso.value;
-  const periodo = selPeriodo.value;
-  const materiaId = selMateria.value;
-  const materiaNombre = materiasCache.find(m => m.id === materiaId)?.nombre || "";
-
-  // Encabezados: Documento, Nombre, Definitiva, y por cada actividad: Nota + Observación
-  const headers = ["Documento","Nombre","Curso","Periodo","Materia","Definitiva"];
-  planActividades.forEach(a => {
-    headers.push(`Nota - ${a.nombre}`);
-    headers.push(`Obs - ${a.nombre}`);
-  });
-
-  const rows = [];
-  rows.push(headers.map(escapeCSV).join(","));
-
-  estudiantes.forEach(st => {
-    const fullName = `${st.apellidos} ${st.nombres}`.trim();
-    const actMap = notasLocal?.[st.documento]?.actividades || {};
-    const def = calcDefinitiva(actMap);
-
-    const row = [
-      st.documento,
-      fullName,
-      String(selCurso.value).toUpperCase(),
-      selPeriodo.value,
-      materiaNombre,
-      (def == null ? "" : def.toFixed(2))
-    ];
-
-    planActividades.forEach(a => {
-      const v = actMap?.[a.id] || { nota:"", obs:"" };
-      row.push(v?.nota ?? "");
-      row.push(v?.obs ?? "");
-    });
-
-    rows.push(row.map(escapeCSV).join(","));
-  });
-
-  const csv = rows.join("\n");
-  downloadText(`consolidado_${selCurso.value}_P${selPeriodo.value}_${materiaNombre || "materia"}.csv`, csv);
-}
-
-/* =========================
-   Eventos UI
-   ========================= */
-selCurso.addEventListener("change", async () => {
-  const grado = courseToGrade(selCurso.value);
-  await loadMateriasForGrade(grado);
-});
-
-btnCargar.addEventListener("click", loadEstudiantes);
-btnAgregarActividad.addEventListener("click", addActividad);
-btnGuardar.addEventListener("click", saveNotas);
-btnDescargarCSV.addEventListener("click", downloadCSV);
-
-// si cambia materia o periodo, limpiamos estudiantes en pantalla (para evitar confusiones)
-selPeriodo.addEventListener("change", () => {
-  estudiantes = [];
-  notasLocal = {};
-  studentsList.innerHTML = `<div class="muted">Cambia filtros y pulsa “Cargar estudiantes”.</div>`;
-  countStudents.textContent = "0";
-});
-selMateria.addEventListener("change", () => {
-  estudiantes = [];
-  notasLocal = {};
-  studentsList.innerHTML = `<div class="muted">Cambia filtros y pulsa “Cargar estudiantes”.</div>`;
-  countStudents.textContent = "0";
 });
 
 /* =========================
    Auth guard + init
    ========================= */
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, async (user)=>{
   if(!user){
     window.location.href = "index.html";
     return;
   }
-  currentUser = user;
 
-  await loadConfig();
-  fillPeriodos();
+  await loadConfigGeneral();
+  PROFILE = await loadUserProfile(user.uid);
+
+  if(!PROFILE){
+    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  if(PROFILE.activo !== true){
+    alert("Usuario inactivo. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  const role = normalizeRole(PROFILE.rol);
+  if(role !== "docente" && role !== "soporte" && role !== "rector" && role !== "rectora" && !role.includes("coordin")){
+    alert("No tienes permisos para el módulo docente.");
+    window.location.href = "app.html";
+    return;
+  }
+
+  userNameEl.textContent = PROFILE.nombre || "(Sin nombre)";
+  userRoleEl.textContent = PROFILE.rol || "(Sin rol)";
+
   await loadCursos();
 
-  // cargar materias para el curso inicial
-  const grado = courseToGrade(selCurso.value);
-  await loadMateriasForGrade(grado);
-
-  showMsg("", "");
+  // Si ya hay un curso seleccionado, carga materias
+  if(selCurso.value){
+    const curso = getCursoSelected();
+    if(curso) await loadMateriasByGrado(curso.grado);
+  }
 });

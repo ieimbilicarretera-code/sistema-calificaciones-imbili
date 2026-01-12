@@ -1,171 +1,81 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Docente | Registro de notas</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Docente • Registro de notas</title>
   <link rel="stylesheet" href="styles.css"/>
-
-  <style>
-    .wide { max-width: 1100px; }
-    .toolbar{
-      display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-top:12px;
-    }
-    .toolbar .field{
-      flex: 1 1 180px;
-    }
-    .toolbar label{ display:block; font-size:13px; color:var(--muted); margin-top:0; }
-    .toolbar select, .toolbar input{
-      width:100%;
-      padding:10px;
-      border-radius:10px;
-      border:1px solid var(--border);
-      background:#0a1020;
-      color:var(--text);
-      outline:none;
-      margin-top:6px;
-    }
-    .actions{
-      display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;
-    }
-    .actions button{ width:auto; }
-    .tableWrap{
-      margin-top:12px;
-      border:1px solid var(--border);
-      border-radius:14px;
-      overflow:hidden;
-      background: rgba(0,0,0,.15);
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    th, td{
-      padding:10px;
-      border-bottom:1px solid rgba(255,255,255,.08);
-      text-align:left;
-    }
-    th{
-      font-size:13px;
-      color: rgba(255,255,255,.75);
-      background: rgba(0,0,0,.15);
-    }
-    tr:hover td{ background: rgba(255,255,255,.03); }
-    .noteInput{
-      width:120px;
-      padding:8px 10px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.14);
-      background:#0a1020;
-      color:var(--text);
-      outline:none;
-    }
-    .badge{
-      display:inline-block;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.15);
-      color: rgba(255,255,255,.75);
-      background: rgba(0,0,0,.10);
-    }
-    .right{ text-align:right; }
-    .small{ font-size:12px; color:var(--muted); }
-    .topRow{
-      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center;
-      margin-top:10px;
-    }
-  </style>
 </head>
 
 <body>
-  <div class="page">
-    <div class="card wide">
-      <div class="brand">
-        <div class="logo">IE</div>
-        <div style="flex:1">
-          <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-          <p class="muted">
-            Docente: <b id="userName">...</b> — Rol: <b id="userRole">...</b>
-          </p>
-        </div>
-        <div class="right">
-          <span class="badge">Año: <b id="anioLectivo">...</b></span>
-          <span class="badge">Períodos: <b id="periodos">4</b></span>
-        </div>
-      </div>
+  <div class="shell">
+    <div class="card big">
 
-      <div class="topRow">
-        <div>
-          <h2 style="margin:0">Registro de notas</h2>
-          <div class="small">Escala: 0.0 a 5.0 (editable). Se guarda en Firestore.</div>
+      <div class="topbar">
+        <div class="brand">
+          <img id="logoIe" class="logo" src="logo.png" alt="IE Imbilí Carretera" />
+          <div>
+            <div class="brand-title">Institución Educativa Imbilí Carretera</div>
+            <div class="brand-sub">Docente • Registro de notas</div>
+          </div>
         </div>
-        <div class="actions">
-          <button id="btnBack" class="secondary">Volver al panel</button>
-          <button id="btnLogout" class="primary">Cerrar sesión</button>
+
+        <div class="top-actions">
+          <a class="btn ghost" href="app.html">Volver</a>
         </div>
       </div>
 
-      <div class="toolbar">
-        <div class="field">
-          <label>Curso</label>
-          <select id="selCurso"></select>
+      <div class="section">
+        <h2>Filtros</h2>
+
+        <div class="grid-2">
+          <div>
+            <label>Curso <span class="req">*</span></label>
+            <select id="selCurso"></select>
+          </div>
+
+          <div>
+            <label>Período <span class="req">*</span></label>
+            <select id="selPeriodo"></select>
+          </div>
+
+          <div class="grid-span-2">
+            <label>Materia <span class="req">*</span></label>
+            <select id="selMateria">
+              <option value="">Selecciona curso primero...</option>
+            </select>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Período</label>
-          <select id="selPeriodo">
-            <option value="1">Periodo 1</option>
-            <option value="2">Periodo 2</option>
-            <option value="3">Periodo 3</option>
-            <option value="4">Periodo 4</option>
-          </select>
+        <div class="toolbar">
+          <button class="btn primary" id="btnCargar">Cargar estudiantes</button>
+          <button class="btn" id="btnAgregarActividad">+ Agregar actividad</button>
+          <button class="btn" id="btnGuardar">Guardar notas</button>
+          <button class="btn ghost" id="btnDescargarCSV">Descargar consolidado (CSV)</button>
         </div>
 
-        <div class="field">
-          <label>Materia</label>
-          <select id="selMateria"></select>
+        <div class="help">
+          • Actividades: cada estudiante tendrá varias actividades (nota + observación).<br/>
+          • La <b>definitiva</b> se calcula como el <b>promedio</b> de las notas diligenciadas (0 a 5).
         </div>
 
-        <div class="field">
-          <label>Acción</label>
-          <button id="btnCargar" class="primary" style="width:100%">Cargar estudiantes</button>
+        <div id="msg" class="msg" style="display:none;"></div>
+      </div>
+
+      <div class="section">
+        <div class="row-between">
+          <h2>Estudiantes del curso</h2>
+          <div class="muted"><span id="countStudents">0</span> estudiantes</div>
+        </div>
+
+        <div id="studentsList" class="students-list">
+          <div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
         </div>
       </div>
 
-      <div class="actions">
-        <button id="btnGuardar" class="primary">Guardar notas</button>
-        <button id="btnPlantilla" class="secondary">Descargar plantilla (CSV vacío)</button>
-        <button id="btnConsolidado" class="secondary">Descargar consolidado (CSV)</button>
-      </div>
-
-      <p class="info" id="msg"></p>
-
-      <div class="tableWrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:90px">#</th>
-              <th>Estudiante</th>
-              <th style="width:160px">Documento</th>
-              <th style="width:170px">Nota</th>
-              <th style="width:180px">Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            <tr><td colspan="5" class="muted">Cargue un curso para ver estudiantes…</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="footer muted">
-        © <span id="year"></span> IE Imbilí Carretera
-      </div>
     </div>
   </div>
 
   <script type="module" src="docente.js"></script>
 </body>
 </html>
-

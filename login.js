@@ -5,16 +5,14 @@ import {
   sendPasswordResetEmail,
   updatePassword
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
 import {
   getFirestore,
   doc,
-  getDoc
+  getDoc,
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* =========================
-   Firebase config (TU PROYECTO)
-   ========================= */
+/* ===== Firebase config ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
   authDomain: "calificaciones-imbili.firebaseapp.com",
@@ -28,10 +26,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* =========================
-   UI refs
-   ========================= */
-const instName = document.getElementById("instName");
+/* ===== UI ===== */
+const yearEl = document.getElementById("year");
+yearEl.textContent = new Date().getFullYear();
 
 const loginView = document.getElementById("loginView");
 const forgotView = document.getElementById("forgotView");
@@ -50,144 +47,102 @@ const forgotMsg = document.getElementById("forgotMsg");
 const newPass1 = document.getElementById("newPass1");
 const newPass2 = document.getElementById("newPass2");
 const btnUpdatePass = document.getElementById("btnUpdatePass");
+const btnBackLogin2 = document.getElementById("btnBackLogin2");
 const changeMsg = document.getElementById("changeMsg");
 
 function show(view){
-  loginView.classList.add("hidden");
-  forgotView.classList.add("hidden");
-  forceChangeView.classList.add("hidden");
-  view.classList.remove("hidden");
+  loginView.classList.remove("active");
+  forgotView.classList.remove("active");
+  forceChangeView.classList.remove("active");
+  view.classList.add("active");
 }
-
-function setMsg(el, text, ok=false){
+function setMsg(el, text, type=""){
+  el.className = "msg " + (type || "");
   el.textContent = text || "";
-  el.classList.remove("hidden");
-  el.classList.toggle("ok", !!ok);
-  el.classList.toggle("err", !ok);
-  el.className = "info " + (ok ? "ok" : "err");
+  el.style.display = text ? "block" : "none";
 }
 
-async function loadInstitutionName(){
-  try{
-    const snap = await getDoc(doc(db, "config", "general"));
-    if(snap.exists()){
-      const data = snap.data();
-      if(data?.institucion) instName.textContent = data.institucion;
-    }
-  }catch(e){
-    // no bloquea
-  }
-}
-loadInstitutionName();
-
-/* =========================
-   Login
-   ========================= */
+/* ===== Login ===== */
 btnLogin.addEventListener("click", async () => {
   const email = (emailEl.value || "").trim();
   const pass = passEl.value || "";
-
-  if(!email || !pass){
-    alert("Por favor ingresa correo y contraseña.");
-    return;
-  }
+  if(!email || !pass) return alert("Por favor ingresa correo y contraseña.");
 
   try{
     const cred = await signInWithEmailAndPassword(auth, email, pass);
 
-    // Perfil en Firestore: docId debe ser el UID
+    // Perfil Firestore
     const uid = cred.user.uid;
-    const userSnap = await getDoc(doc(db, "usuarios", uid));
+    const snap = await getDoc(doc(db, "usuarios", uid));
 
-    if(!userSnap.exists()){
+    if(!snap.exists()){
       alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
       return;
     }
-
-    const profile = userSnap.data();
-
-    const activo = profile.activo ?? profile.Activo;
-    if(activo !== true){
+    const profile = snap.data();
+    if(profile.activo !== true){
       alert("Usuario inactivo. Contacta a soporte.");
       return;
     }
 
-    const must = profile.mustChangePassword ?? profile.mustchangepassword;
-    if(must === true){
+    if(profile.mustChangePassword === true){
       show(forceChangeView);
+      setMsg(changeMsg, "", "");
       return;
     }
 
     window.location.href = "app.html";
-  }catch(err){
-    console.error(err);
-    alert("Error al ingresar. Verifica tu correo y contraseña.");
+  }catch(e){
+    console.error(e);
+    alert("Error al ingresar. Verifica tus datos.");
   }
 });
 
-/* =========================
-   Olvidé contraseña
-   ========================= */
+/* ===== Olvidé contraseña ===== */
 linkForgot.addEventListener("click", (e) => {
   e.preventDefault();
-  show(forgotView);
   forgotEmail.value = (emailEl.value || "").trim();
-  forgotMsg.classList.add("hidden");
+  setMsg(forgotMsg, "", "");
+  show(forgotView);
 });
-
-btnBackLogin.addEventListener("click", () => {
-  show(loginView);
-});
+btnBackLogin.addEventListener("click", () => show(loginView));
 
 btnSendReset.addEventListener("click", async () => {
   const email = (forgotEmail.value || "").trim();
-  if(!email){
-    setMsg(forgotMsg, "Por favor escribe tu correo.", false);
-    return;
-  }
-
+  if(!email) return setMsg(forgotMsg, "Escribe tu correo.", "warn");
   try{
     await sendPasswordResetEmail(auth, email);
-    setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", true);
-  }catch(err){
-    console.error(err);
-    setMsg(forgotMsg, "No se pudo enviar el correo. Verifica el correo o contacta a soporte.", false);
+    setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(forgotMsg, "No se pudo enviar. Verifica el correo o contacta a soporte.", "err");
   }
 });
 
-/* =========================
-   Cambio obligatorio
-   ========================= */
+/* ===== Cambio obligatorio ===== */
+btnBackLogin2.addEventListener("click", () => show(loginView));
+
 btnUpdatePass.addEventListener("click", async () => {
   const p1 = newPass1.value || "";
   const p2 = newPass2.value || "";
 
-  if(p1.length < 6){
-    setMsg(changeMsg, "La contraseña debe tener mínimo 6 caracteres.", false);
-    return;
-  }
-  if(p1 !== p2){
-    setMsg(changeMsg, "Las contraseñas no coinciden.", false);
-    return;
-  }
+  if(p1.length < 6) return setMsg(changeMsg, "Mínimo 6 caracteres.", "warn");
+  if(p1 !== p2) return setMsg(changeMsg, "No coinciden.", "warn");
 
   try{
     if(!auth.currentUser){
-      setMsg(changeMsg, "Sesión no válida. Vuelve a iniciar sesión.", false);
       show(loginView);
-      return;
+      return setMsg(changeMsg, "Sesión inválida. Vuelve a ingresar.", "err");
     }
-
     await updatePassword(auth.currentUser, p1);
 
-    // Marcar para que app.html actualice mustChangePassword a false
-    localStorage.setItem("justChangedPassword", "1");
+    // marcar mustChangePassword=false
+    await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { mustChangePassword:false });
 
-    setMsg(changeMsg, "Proceso exitoso. Continuando…", true);
-    setTimeout(() => window.location.href = "app.html", 800);
-
-  }catch(err){
-    console.error(err);
-    setMsg(changeMsg, "No se pudo cambiar. Vuelve a iniciar sesión y reintenta.", false);
+    setMsg(changeMsg, "Proceso exitoso. Entrando...", "ok");
+    setTimeout(()=> window.location.href = "app.html", 600);
+  }catch(e){
+    console.error(e);
+    setMsg(changeMsg, "No se pudo cambiar. Reingresa y vuelve a intentar.", "err");
   }
 });

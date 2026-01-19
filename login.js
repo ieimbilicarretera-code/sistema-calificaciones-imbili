@@ -12,6 +12,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+
 /* ===== Firebase config ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",

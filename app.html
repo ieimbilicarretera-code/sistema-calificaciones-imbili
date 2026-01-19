@@ -1,271 +1,148 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>IE Imbilí Carretera | Panel</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="bg"></div>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  <main class="wrap">
-    <section class="card">
-      <!-- Header -->
-      <header class="top">
-        <div class="brand">
-          <img class="logo" src="logo.png" alt="IE Imbilí Carretera" />
-          <div class="brandText">
-            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-            <p class="sub">
-              Bienvenido(a): <b id="userName">---</b> — Rol: <b id="userRole">---</b>
-            </p>
-          </div>
-        </div>
+/* ===== Firebase config ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
+  authDomain: "calificaciones-imbili.firebaseapp.com",
+  projectId: "calificaciones-imbili",
+  storageBucket: "calificaciones-imbili.firebasestorage.app",
+  messagingSenderId: "1027786450920",
+  appId: "1:1027786450920:web:9517539adbb1ea06e5665d"
+};
 
-        <div class="pillRow">
-          <span class="pill">Año lectivo: <b id="anioLectivo">...</b></span>
-          <span class="pill">Períodos: <b id="periodos">...</b></span>
-        </div>
-      </header>
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-      <!-- MENU -->
-      <section id="viewMenu" class="view active">
-        <div class="panelHead">
-          <div>
-            <h2>Panel principal</h2>
-            <p class="muted">Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.</p>
-          </div>
-          <button id="btnLogout" class="btn danger">Cerrar sesión</button>
-        </div>
+/* ===== UI ===== */
+const yearEl = document.getElementById("year");
+yearEl.textContent = new Date().getFullYear();
 
-        <p class="hint">Consejo: si un módulo no aparece, es por permisos/rol.</p>
+const loginView = document.getElementById("loginView");
+const forgotView = document.getElementById("forgotView");
+const forceChangeView = document.getElementById("forceChangeView");
 
-        <h3 class="sectionTitle">Módulos</h3>
-        <div id="modulesGrid" class="modulesGrid"></div>
+const emailEl = document.getElementById("email");
+const passEl = document.getElementById("password");
+const btnLogin = document.getElementById("btnLogin");
 
-        <footer class="foot">© <span id="year"></span> IE Imbilí Carretera</footer>
-      </section>
+const linkForgot = document.getElementById("linkForgot");
+const forgotEmail = document.getElementById("forgotEmail");
+const btnSendReset = document.getElementById("btnSendReset");
+const btnBackLogin = document.getElementById("btnBackLogin");
+const forgotMsg = document.getElementById("forgotMsg");
 
-      <!-- SECRETARIA -->
-      <section id="viewSecretaria" class="view">
-        <div class="panelHead">
-          <div>
-            <h2>Secretaría • Estudiantes</h2>
-            <p class="muted">Registro individual y carga masiva (CSV). Esto alimenta el sistema para que Docentes registren notas.</p>
-          </div>
-          <button class="btn" data-back>Volver</button>
-        </div>
+const newPass1 = document.getElementById("newPass1");
+const newPass2 = document.getElementById("newPass2");
+const btnUpdatePass = document.getElementById("btnUpdatePass");
+const btnBackLogin2 = document.getElementById("btnBackLogin2");
+const changeMsg = document.getElementById("changeMsg");
 
-        <div class="grid2">
-          <!-- Registro individual -->
-          <div class="box">
-            <h3>Registro individual</h3>
-            <p class="muted small">Campos obligatorios: Documento, Nombres, Apellidos, Grado y Curso.</p>
+function show(view){
+  loginView.classList.remove("active");
+  forgotView.classList.remove("active");
+  forceChangeView.classList.remove("active");
+  view.classList.add("active");
+}
+function setMsg(el, text, type=""){
+  el.className = "msg " + (type || "");
+  el.textContent = text || "";
+  el.style.display = text ? "block" : "none";
+}
 
-            <div class="formGrid">
-              <label>
-                Tipo doc
-                <select id="stTipoDoc">
-                  <option value="TI">TI</option>
-                  <option value="CC">CC</option>
-                  <option value="RC">RC</option>
-                  <option value="CE">CE</option>
-                  <option value="PA">PA</option>
-                </select>
-              </label>
+/* ===== Login ===== */
+btnLogin.addEventListener("click", async () => {
+  const email = (emailEl.value || "").trim();
+  const pass = passEl.value || "";
+  if(!email || !pass) return alert("Por favor ingresa correo y contraseña.");
 
-              <label>
-                Documento *
-                <input id="stDocumento" type="text" placeholder="1087..." />
-              </label>
+  try{
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
 
-              <label>
-                Nombres *
-                <input id="stNombres" type="text" placeholder="Nombres" />
-              </label>
+    // Perfil Firestore
+    const uid = cred.user.uid;
+    const snap = await getDoc(doc(db, "usuarios", uid));
 
-              <label>
-                Apellidos *
-                <input id="stApellidos" type="text" placeholder="Apellidos" />
-              </label>
+    if(!snap.exists()){
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+      return;
+    }
+    const profile = snap.data();
+    if(profile.activo !== true){
+      alert("Usuario inactivo. Contacta a soporte.");
+      return;
+    }
 
-              <label>
-                Grado * (0-11)
-                <input id="stGrado" type="number" min="0" max="11" placeholder="0..11" />
-              </label>
+    if(profile.mustChangePassword === true){
+      show(forceChangeView);
+      setMsg(changeMsg, "", "");
+      return;
+    }
 
-              <label>
-                Curso * (ej: 0A, 1A, 5A, 10A)
-                <input id="stCurso" type="text" placeholder="5A" />
-              </label>
+    window.location.href = "app.html";
+  }catch(e){
+    console.error(e);
+    alert("Error al ingresar. Verifica tus datos.");
+  }
+});
 
-              <label>
-                Jornada
-                <select id="stJornada">
-                  <option value="Mañana">Mañana</option>
-                  <option value="Tarde">Tarde</option>
-                  <option value="Noche">Noche</option>
-                  <option value="Única">Única</option>
-                </select>
-              </label>
+/* ===== Olvidé contraseña ===== */
+linkForgot.addEventListener("click", (e) => {
+  e.preventDefault();
+  forgotEmail.value = (emailEl.value || "").trim();
+  setMsg(forgotMsg, "", "");
+  show(forgotView);
+});
+btnBackLogin.addEventListener("click", () => show(loginView));
 
-              <label>
-                Nacimiento
-                <input id="stNacimiento" type="date" />
-              </label>
+btnSendReset.addEventListener("click", async () => {
+  const email = (forgotEmail.value || "").trim();
+  if(!email) return setMsg(forgotMsg, "Escribe tu correo.", "warn");
+  try{
+    await sendPasswordResetEmail(auth, email);
+    setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(forgotMsg, "No se pudo enviar. Verifica el correo o contacta a soporte.", "err");
+  }
+});
 
-              <label>
-                Edad
-                <input id="stEdad" type="number" min="0" max="30" placeholder="10" />
-              </label>
+/* ===== Cambio obligatorio ===== */
+btnBackLogin2.addEventListener("click", () => show(loginView));
 
-              <label>
-                Correo
-                <input id="stCorreo" type="email" placeholder="acudiente@correo.com" />
-              </label>
+btnUpdatePass.addEventListener("click", async () => {
+  const p1 = newPass1.value || "";
+  const p2 = newPass2.value || "";
 
-              <label>
-                Teléfono
-                <input id="stTelefono" type="text" placeholder="311..." />
-              </label>
+  if(p1.length < 6) return setMsg(changeMsg, "Mínimo 6 caracteres.", "warn");
+  if(p1 !== p2) return setMsg(changeMsg, "No coinciden.", "warn");
 
-              <label class="span2">
-                Dirección
-                <input id="stDireccion" type="text" placeholder="Barrio / Vereda" />
-              </label>
-            </div>
+  try{
+    if(!auth.currentUser){
+      show(loginView);
+      return setMsg(changeMsg, "Sesión inválida. Vuelve a ingresar.", "err");
+    }
+    await updatePassword(auth.currentUser, p1);
 
-            <div class="row">
-              <button id="btnGuardarEstudiante" class="btn primary">Guardar estudiante</button>
-              <button id="btnLimpiarEstudiante" class="btn">Limpiar</button>
-            </div>
+    // marcar mustChangePassword=false
+    await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { mustChangePassword:false });
 
-            <div id="msgSecretaria1" class="msg" style="display:none;"></div>
-          </div>
-
-          <!-- Carga masiva CSV -->
-          <div class="box">
-            <h3>Carga masiva (CSV)</h3>
-            <p class="muted small">
-              Descarga la plantilla, llénala y luego súbela.  
-              El sistema actualizará/creará estudiantes en la colección <b>estudiantes</b>.
-            </p>
-
-            <div class="row">
-              <button id="btnDescargarPlantillaCSV" class="btn">Descargar plantilla CSV</button>
-            </div>
-
-            <label class="file">
-              Seleccionar archivo CSV
-              <input id="csvFile" type="file" accept=".csv" />
-            </label>
-
-            <div class="row">
-              <button id="btnImportarCSV" class="btn primary">Importar CSV</button>
-            </div>
-
-            <div id="msgSecretaria2" class="msg" style="display:none;"></div>
-
-            <div class="note">
-              <b>Formato esperado (encabezados):</b><br/>
-              tipoDoc,documento,nombres,apellidos,grado,curso,jornada,edad,correo,telefono,direccion
-            </div>
-          </div>
-        </div>
-
-        <footer class="foot">© <span id="year2"></span> IE Imbilí Carretera</footer>
-      </section>
-
-<!-- DOCENTE -->
-<section id="viewDocente" class="view">
-  <div class="panelHead">
-    <div>
-      <h2>Docente • Registro de notas</h2>
-      <p class="muted">Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.</p>
-    </div>
-    <button class="btn" data-back>Volver</button>
-  </div>
-
-  <div class="box" style="margin-top:14px;">
-    <h3>Filtros</h3>
-
-    <div class="formGrid">
-      <label>
-        Curso *
-        <select id="dcCurso">
-          <option value="">-- Selecciona --</option>
-        </select>
-      </label>
-
-      <label>
-        Período *
-        <select id="dcPeriodo">
-          <option value="">-- Selecciona --</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-      </label>
-
-      <label class="span2">
-        Materia *
-        <select id="dcMateriaSelect">
-          <option value="">-- Selecciona curso primero --</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="row">
-      <button id="btnCargarEstudiantes" class="btn primary">Cargar estudiantes</button>
-      <button id="btnGuardarNotas" class="btn">Guardar notas</button>
-      <button id="btnAddActividad" class="btn">+ Agregar actividad</button>
-    </div>
-
-    <div class="note">
-      <b>Actividades:</b> cada estudiante tendrá varias actividades (nota + observación).  
-      La <b>definitiva</b> se calcula como el promedio de las notas diligenciadas.
-    </div>
-
-    <div id="msgDocente" class="msg" style="display:none;"></div>
-  </div>
-
-  <div class="box" style="margin-top:14px;">
-    <div class="row" style="justify-content:space-between;">
-      <h3 style="margin:0;">Estudiantes del curso</h3>
-      <div class="muted small" id="dcInfo">0 estudiantes</div>
-    </div>
-
-    <div class="tableWrap">
-      <table class="tbl tblWide">
-        <thead id="dcThead">
-          <tr>
-            <th style="width:140px;">Documento</th>
-            <th style="min-width:220px;">Nombre</th>
-            <th style="width:110px;">Definitiva</th>
-            <!-- Aquí van dinámicamente las columnas de actividades -->
-          </tr>
-        </thead>
-        <tbody id="dcTbody">
-          <tr><td colspan="4" class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <footer class="foot">© <span id="year3"></span> IE Imbilí Carretera</footer>
-</section>
-
-  </main>
-
-  <script>
-    const y = new Date().getFullYear();
-    const a = document.getElementById("year"); if(a) a.textContent = y;
-    const b = document.getElementById("year2"); if(b) b.textContent = y;
-    const c = document.getElementById("year3"); if(c) c.textContent = y;
-  </script>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+    setMsg(changeMsg, "Proceso exitoso. Entrando...", "ok");
+    setTimeout(()=> window.location.href = "app.html", 600);
+  }catch(e){
+    console.error(e);
+    setMsg(changeMsg, "No se pudo cambiar. Reingresa y vuelve a intentar.", "err");
+  }
+});

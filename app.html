@@ -1,148 +1,260 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-  updatePassword
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Panel • IE Imbilí Carretera</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <div class="shell">
 
-/* ===== Firebase config ===== */
-const firebaseConfig = {
-  apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
-  authDomain: "calificaciones-imbili.firebaseapp.com",
-  projectId: "calificaciones-imbili",
-  storageBucket: "calificaciones-imbili.firebasestorage.app",
-  messagingSenderId: "1027786450920",
-  appId: "1:1027786450920:web:9517539adbb1ea06e5665d"
-};
+      <div class="topbar">
+        <div class="brand">
+          <img src="logo.png" class="logo" alt="Logo IE"/>
+          <div style="min-width:0">
+            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+            <p>Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b></p>
+          </div>
+        </div>
+        <div class="chips">
+          <div class="chip">Año lectivo: <b id="anioLectivo">...</b></div>
+          <div class="chip">Períodos: <b id="periodos">...</b></div>
+        </div>
+      </div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+      <div class="content">
+        <!-- MENU -->
+        <section id="viewMenu" class="view active">
+          <div class="card">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h3 style="margin:0 0 6px 0;">Panel principal</h3>
+                <div style="color:var(--muted); font-size:13px;">
+                  Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.
+                </div>
+              </div>
+              <button id="btnLogout" class="btn danger">Cerrar sesión</button>
+            </div>
+            <div class="hr"></div>
+            <div style="color:var(--muted); font-size:12.5px; text-align:center;">
+              Consejo: si un módulo no aparece, es por permisos/rol.
+            </div>
+          </div>
 
-/* ===== UI ===== */
-const yearEl = document.getElementById("year");
-yearEl.textContent = new Date().getFullYear();
+          <div class="card" style="margin-top:12px;">
+            <h3 style="margin:0 0 10px 0;">Módulos</h3>
+            <div id="modulesGrid" class="modules"></div>
+          </div>
+        </section>
 
-const loginView = document.getElementById("loginView");
-const forgotView = document.getElementById("forgotView");
-const forceChangeView = document.getElementById("forceChangeView");
+        <!-- SECRETARIA -->
+        <section id="viewSecretaria" class="view">
+          <div class="card">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h3 style="margin:0;">Secretaría • Estudiantes</h3>
+                <div style="color:var(--muted); font-size:13px;">Registrar estudiantes (individual o carga masiva CSV).</div>
+              </div>
+              <button class="btn" data-back>Volver</button>
+            </div>
 
-const emailEl = document.getElementById("email");
-const passEl = document.getElementById("password");
-const btnLogin = document.getElementById("btnLogin");
+            <div class="hr"></div>
 
-const linkForgot = document.getElementById("linkForgot");
-const forgotEmail = document.getElementById("forgotEmail");
-const btnSendReset = document.getElementById("btnSendReset");
-const btnBackLogin = document.getElementById("btnBackLogin");
-const forgotMsg = document.getElementById("forgotMsg");
+            <h4 style="margin:0 0 10px 0;">Registro individual</h4>
+            <div class="grid2">
+              <div>
+                <div class="label">Tipo doc *</div>
+                <select id="stTipoDoc">
+                  <option>TI</option><option>CC</option><option>RC</option><option>CE</option><option>PA</option>
+                </select>
+              </div>
+              <div>
+                <div class="label">Documento *</div>
+                <input id="stDocumento" class="input" placeholder="Ej: 1087..." />
+              </div>
 
-const newPass1 = document.getElementById("newPass1");
-const newPass2 = document.getElementById("newPass2");
-const btnUpdatePass = document.getElementById("btnUpdatePass");
-const btnBackLogin2 = document.getElementById("btnBackLogin2");
-const changeMsg = document.getElementById("changeMsg");
+              <div>
+                <div class="label">Nombres *</div>
+                <input id="stNombres" class="input" placeholder="Ej: JUAN" />
+              </div>
+              <div>
+                <div class="label">Apellidos *</div>
+                <input id="stApellidos" class="input" placeholder="Ej: PEREZ" />
+              </div>
 
-function show(view){
-  loginView.classList.remove("active");
-  forgotView.classList.remove("active");
-  forceChangeView.classList.remove("active");
-  view.classList.add("active");
-}
-function setMsg(el, text, type=""){
-  el.className = "msg " + (type || "");
-  el.textContent = text || "";
-  el.style.display = text ? "block" : "none";
-}
+              <div>
+                <div class="label">Grado *</div>
+                <input id="stGrado" class="input" placeholder="Ej: 11" />
+              </div>
+              <div>
+                <div class="label">Curso *</div>
+                <input id="stCurso" class="input" placeholder="Ej: 11A" />
+              </div>
 
-/* ===== Login ===== */
-btnLogin.addEventListener("click", async () => {
-  const email = (emailEl.value || "").trim();
-  const pass = passEl.value || "";
-  if(!email || !pass) return alert("Por favor ingresa correo y contraseña.");
+              <div>
+                <div class="label">Jornada</div>
+                <select id="stJornada">
+                  <option>Mañana</option><option>Tarde</option><option>Noche</option><option>Única</option>
+                </select>
+              </div>
+              <div>
+                <div class="label">Edad</div>
+                <input id="stEdad" type="number" class="input" placeholder="Ej: 15" />
+              </div>
 
-  try{
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
+              <div>
+                <div class="label">Correo</div>
+                <input id="stCorreo" class="input" placeholder="acudiente@correo.com" />
+              </div>
+              <div>
+                <div class="label">Teléfono</div>
+                <input id="stTelefono" class="input" placeholder="3xx..." />
+              </div>
 
-    // Perfil Firestore
-    const uid = cred.user.uid;
-    const snap = await getDoc(doc(db, "usuarios", uid));
+              <div style="grid-column:1/-1;">
+                <div class="label">Dirección</div>
+                <input id="stDireccion" class="input" placeholder="Barrio / vereda..." />
+              </div>
+            </div>
 
-    if(!snap.exists()){
-      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-      return;
-    }
-    const profile = snap.data();
-    if(profile.activo !== true){
-      alert("Usuario inactivo. Contacta a soporte.");
-      return;
-    }
+            <div class="row" style="margin-top:12px;">
+              <button id="btnGuardarEstudiante" class="btn primary">Guardar estudiante</button>
+              <button id="btnLimpiarEstudiante" class="btn">Limpiar</button>
+            </div>
+            <div id="msgSecretaria1" class="msg"></div>
 
-    if(profile.mustChangePassword === true){
-      show(forceChangeView);
-      setMsg(changeMsg, "", "");
-      return;
-    }
+            <div class="hr"></div>
 
-    window.location.href = "app.html";
-  }catch(e){
-    console.error(e);
-    alert("Error al ingresar. Verifica tus datos.");
-  }
-});
+            <h4 style="margin:0 0 10px 0;">Carga masiva (CSV)</h4>
+            <div class="row">
+              <input id="csvFile" type="file" accept=".csv" class="input" style="max-width:360px;">
+              <button id="btnImportarCSV" class="btn primary">Importar CSV</button>
+              <button id="btnDescargarPlantillaCSV" class="btn">Descargar plantilla</button>
+            </div>
+            <div id="msgSecretaria2" class="msg"></div>
+          </div>
+        </section>
 
-/* ===== Olvidé contraseña ===== */
-linkForgot.addEventListener("click", (e) => {
-  e.preventDefault();
-  forgotEmail.value = (emailEl.value || "").trim();
-  setMsg(forgotMsg, "", "");
-  show(forgotView);
-});
-btnBackLogin.addEventListener("click", () => show(loginView));
+        <!-- DOCENTE -->
+        <section id="viewDocente" class="view">
+          <div class="card">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h3 style="margin:0;">Docente • Registro de notas</h3>
+                <div style="color:var(--muted); font-size:13px;">
+                  Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.
+                </div>
+              </div>
+              <button class="btn" data-back>Volver</button>
+            </div>
 
-btnSendReset.addEventListener("click", async () => {
-  const email = (forgotEmail.value || "").trim();
-  if(!email) return setMsg(forgotMsg, "Escribe tu correo.", "warn");
-  try{
-    await sendPasswordResetEmail(auth, email);
-    setMsg(forgotMsg, "Listo. Se envió un enlace de recuperación a tu correo.", "ok");
-  }catch(e){
-    console.error(e);
-    setMsg(forgotMsg, "No se pudo enviar. Verifica el correo o contacta a soporte.", "err");
-  }
-});
+            <div class="hr"></div>
 
-/* ===== Cambio obligatorio ===== */
-btnBackLogin2.addEventListener("click", () => show(loginView));
+            <div class="grid2">
+              <div>
+                <div class="label">Curso *</div>
+                <select id="dcCurso"></select>
+              </div>
+              <div>
+                <div class="label">Período *</div>
+                <select id="dcPeriodo">
+                  <option value="1">1</option><option value="2">2</option>
+                  <option value="3">3</option><option value="4">4</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1;">
+                <div class="label">Materia *</div>
+                <select id="dcMateria">
+                  <option value="">Selecciona un curso primero...</option>
+                </select>
+              </div>
+            </div>
 
-btnUpdatePass.addEventListener("click", async () => {
-  const p1 = newPass1.value || "";
-  const p2 = newPass2.value || "";
+            <div class="row" style="margin-top:12px;">
+              <button id="dcBtnLoad" class="btn primary">Cargar estudiantes</button>
+              <button id="dcBtnSave" class="btn">Guardar notas</button>
+              <button id="dcBtnAddAct" class="btn">+ Agregar actividad</button>
+            </div>
 
-  if(p1.length < 6) return setMsg(changeMsg, "Mínimo 6 caracteres.", "warn");
-  if(p1 !== p2) return setMsg(changeMsg, "No coinciden.", "warn");
+            <div id="dcMsg" class="msg"></div>
 
-  try{
-    if(!auth.currentUser){
-      show(loginView);
-      return setMsg(changeMsg, "Sesión inválida. Vuelve a ingresar.", "err");
-    }
-    await updatePassword(auth.currentUser, p1);
+            <div style="margin-top:10px; color:var(--muted); font-size:12.8px;">
+              Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de notas diligenciadas.
+            </div>
 
-    // marcar mustChangePassword=false
-    await updateDoc(doc(db, "usuarios", auth.currentUser.uid), { mustChangePassword:false });
+            <div id="dcTableWrap" class="tableWrap" style="display:none;"></div>
+          </div>
+        </section>
 
-    setMsg(changeMsg, "Proceso exitoso. Entrando...", "ok");
-    setTimeout(()=> window.location.href = "app.html", 600);
-  }catch(e){
-    console.error(e);
-    setMsg(changeMsg, "No se pudo cambiar. Reingresa y vuelve a intentar.", "err");
-  }
-});
+        <!-- SOPORTE -->
+        <section id="viewSoporte" class="view">
+          <div class="card">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h3 style="margin:0;">Soporte • Configuración</h3>
+                <div style="color:var(--muted); font-size:13px;">
+                  Crear cursos/grupos y materias sin entrar a Firebase.
+                </div>
+              </div>
+              <button class="btn" data-back>Volver</button>
+            </div>
+
+            <div class="hr"></div>
+
+            <h4 style="margin:0 0 10px 0;">Crear curso (ej: 11A, 0A, 1A)</h4>
+            <div class="grid2">
+              <div>
+                <div class="label">ID Curso *</div>
+                <input id="spCursoId" class="input" placeholder="Ej: 11A" />
+              </div>
+              <div>
+                <div class="label">Grado *</div>
+                <input id="spCursoGrado" class="input" placeholder="Ej: 11" />
+              </div>
+              <div>
+                <div class="label">Jornada</div>
+                <select id="spCursoJornada">
+                  <option>Mañana</option><option>Tarde</option><option>Noche</option><option>Única</option>
+                </select>
+              </div>
+              <div>
+                <div class="label">Año lectivo</div>
+                <input id="spCursoAnio" class="input" placeholder="Ej: 2025" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px;">
+              <button id="spCrearCurso" class="btn primary">Guardar curso</button>
+            </div>
+            <div id="spMsgCurso" class="msg"></div>
+
+            <div class="hr"></div>
+
+            <h4 style="margin:0 0 10px 0;">Crear materia (para un grado)</h4>
+            <div class="grid2">
+              <div>
+                <div class="label">Grado *</div>
+                <input id="spMatGrado" class="input" placeholder="Ej: 11" />
+              </div>
+              <div>
+                <div class="label">Nombre materia *</div>
+                <input id="spMatNombre" class="input" placeholder="Ej: Matemáticas" />
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px;">
+              <button id="spCrearMateria" class="btn primary">Crear materia</button>
+            </div>
+            <div id="spMsgMateria" class="msg"></div>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="footer">© 2026 IE Imbilí Carretera</div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,96 +1,93 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Docente • Registro de notas</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="wrap">
+    <div class="shell">
 
-  
-  <div class="shell">
-    <div class="card glass">
-      <div class="topbar">
-        <div class="brand">
-          <img src="logo.png" alt="IE Imbilí" class="logo" />
-          <div>
-            <div class="inst" id="instName">Institución Educativa Imbilí Carretera</div>
-            <div class="sub">Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b></div>
+      <div class="card">
+        <div class="header">
+          <div class="logo"><img src="assets/logo.png" alt="Logo IE"></div>
+
+          <div class="hgroup">
+            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+            <p>Docente • Registro de notas — <b id="docenteName">---</b></p>
+          </div>
+
+          <div class="chips">
+            <div class="chip">Año lectivo: <b id="anioLectivo">…</b></div>
+            <div class="chip">Períodos: <b id="periodos">…</b></div>
+            <button class="btn-ghost" id="btnBack">Volver</button>
           </div>
         </div>
 
-        <div class="meta">
-          <span class="pill">Año lectivo: <b id="anioLectivo">...</b></span>
-          <span class="pill">Periodos: <b id="periodos">4</b></span>
+        <div class="content">
+
+          <div class="panel">
+            <h2>Filtros</h2>
+            <p>Elige curso, período y materia. Luego carga estudiantes.</p>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="selCurso">Curso *</label>
+                <select id="selCurso"></select>
+              </div>
+
+              <div class="field">
+                <label for="selPeriodo">Período *</label>
+                <select id="selPeriodo"></select>
+              </div>
+
+              <div class="field">
+                <label for="selMateria">Materia *</label>
+                <select id="selMateria">
+                  <option value="">Selecciona un curso primero…</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="btns" style="margin-top:12px;">
+              <button class="btn-primary" id="btnCargar">Cargar estudiantes</button>
+              <button class="btn-ghost" id="btnAddAct">+ Agregar actividad</button>
+              <button class="btn-ghost" id="btnGuardar">Guardar notas</button>
+            </div>
+
+            <div class="msg" id="msgTop"></div>
+            <div class="small" style="margin-top:10px;">
+              Actividades: se crean por <b>curso + período + materia</b>. La definitiva se calcula como promedio de notas diligenciadas (0.0 a 5.0).
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:14px;">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h2>Estudiantes del curso</h2>
+                <p class="small">Verás tarjetas por estudiante con actividades (nota + observación) y promedio automático.</p>
+              </div>
+              <div class="chip">Total: <b id="totalEst">0</b></div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div id="students" class="student-list"></div>
+            <div class="msg" id="msgBottom"></div>
+          </div>
+
+        </div>
+
+        <div class="footer">
+          <span>© <span id="year"></span> IE Imbilí Carretera</span>
+          <span class="small">Si no ves materias, revisa que existan en Firestore y que tengan el grado correcto.</span>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panelHead">
-          <div>
-            <h2 style="margin:0">Docente • Registro de notas</h2>
-            <p class="muted" style="margin:6px 0 0">
-              Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.
-            </p>
-          </div>
-          <button class="btn" id="btnBack">Volver</button>
-        </div>
-
-        <div class="box">
-          <h3 style="margin:0 0 14px">Filtros</h3>
-
-          <div class="grid2">
-            <div>
-              <label>Curso *</label>
-              <select id="slCurso"></select>
-            </div>
-
-            <div>
-              <label>Período *</label>
-              <select id="slPeriodo">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="margin-top:12px">
-            <label>Materia *</label>
-            <select id="slMateria">
-              <option value="">-- Selecciona --</option>
-            </select>
-          </div>
-
-          <div class="actionsRow">
-            <button class="btn primary" id="btnCargar">Cargar estudiantes</button>
-            <button class="btn" id="btnGuardar">Guardar notas</button>
-            <button class="btn" id="btnAddActividad">+ Agregar actividad</button>
-          </div>
-
-          <div class="msg ok" id="msgOk" style="display:none"></div>
-          <div class="msg warn" id="msgWarn" style="display:none"></div>
-          <div class="msg err" id="msgErr" style="display:none"></div>
-
-          <p class="muted" style="margin:12px 0 0">
-            Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de las notas diligenciadas.
-          </p>
-        </div>
-
-        <div class="box" style="margin-top:16px">
-          <div class="tableHead">
-            <h3 style="margin:0">Estudiantes del curso</h3>
-            <div class="muted"><span id="countEst">0</span> estudiantes</div>
-          </div>
-
-          <div id="tableWrap" class="tableWrap">
-            <div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>
-          </div>
-        </div>
-
-      </div>
     </div>
   </div>
 

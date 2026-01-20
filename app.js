@@ -85,6 +85,7 @@ function renderModules(roleRaw){
 
   const isDocente = ["docente","soporte","rector","rectora","coordinador","coordinador academico","coordinador académico"].includes(role);
   const isSecretaria = ["secretaria","soporte","rector","rectora","coordinador","coordinador academico","coordinador académico"].includes(role);
+  const isSoporte = (role === "soporte");
 
   addModule({
     icon:"SE",
@@ -104,7 +105,6 @@ function renderModules(roleRaw){
     enabled:isDocente
   });
 
-    const isSoporte = (role === "soporte");
 
   addModule({
     icon:"AD",

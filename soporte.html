@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soporte • Configuración</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="shell">
+
+      <div class="card">
+        <div class="header">
+          <div class="logo"><img src="assets/logo.png" alt="Logo IE"></div>
+
+          <div class="hgroup">
+            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
+            <p>Soporte • Configuración — <b id="supName">---</b></p>
+          </div>
+
+          <div class="chips">
+            <div class="chip">Año lectivo: <b id="anioLectivo">…</b></div>
+            <div class="chip">Períodos: <b id="periodos">…</b></div>
+            <button class="btn-ghost" id="btnBack">Volver</button>
+          </div>
+        </div>
+
+        <div class="content">
+
+          <!-- CURSOS -->
+          <div class="panel">
+            <h2>Crear / Editar curso</h2>
+            <p>Ej: 11A, 10B, 0A… (El documento se guarda con ID = nombre del curso en mayúscula)</p>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="cuNombre">Nombre curso *</label>
+                <input id="cuNombre" placeholder="Ej: 11A" />
+              </div>
+              <div class="field">
+                <label for="cuGrado">Grado *</label>
+                <input id="cuGrado" type="number" min="0" max="11" placeholder="Ej: 11" />
+              </div>
+              <div class="field">
+                <label for="cuJornada">Jornada</label>
+                <select id="cuJornada">
+                  <option value="Mañana">Mañana</option>
+                  <option value="Tarde">Tarde</option>
+                  <option value="Noche">Noche</option>
+                  <option value="Única">Única</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cuActivo">Activo</label>
+                <select id="cuActivo">
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="btns" style="margin-top:12px;">
+              <button class="btn-primary" id="btnSaveCurso">Guardar curso</button>
+              <button class="btn-ghost" id="btnClearCurso">Limpiar</button>
+            </div>
+
+            <div class="msg" id="msgCurso"></div>
+          </div>
+
+          <!-- MATERIAS -->
+          <div class="panel" style="margin-top:14px;">
+            <h2>Crear / Editar materia</h2>
+            <p>Las materias se cargan en Docente según el grado del curso.</p>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="maNombre">Nombre materia *</label>
+                <input id="maNombre" placeholder="Ej: Matemáticas" />
+              </div>
+              <div class="field">
+                <label for="maGrado">Grado *</label>
+                <input id="maGrado" type="number" min="0" max="11" placeholder="Ej: 11" />
+              </div>
+              <div class="field">
+                <label for="maActiva">Activa</label>
+                <select id="maActiva">
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="btns" style="margin-top:12px;">
+              <button class="btn-primary" id="btnSaveMateria">Guardar materia</button>
+              <button class="btn-ghost" id="btnClearMateria">Limpiar</button>
+            </div>
+
+            <div class="msg" id="msgMateria"></div>
+          </div>
+
+          <!-- LISTADOS -->
+          <div class="panel" style="margin-top:14px;">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h2>Listados</h2>
+                <p class="small">Clic en “Editar” para cargar el formulario arriba.</p>
+              </div>
+              <div class="btns">
+                <button class="btn-ghost" id="btnReload">Refrescar</button>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <h2 style="font-size:14px; margin:0 0 8px;">Cursos</h2>
+            <div id="listCursos"></div>
+
+            <div class="hr"></div>
+
+            <h2 style="font-size:14px; margin:0 0 8px;">Materias</h2>
+            <div id="listMaterias"></div>
+
+            <div class="msg" id="msgList"></div>
+          </div>
+
+        </div>
+
+        <div class="footer">
+          <span>© <span id="year"></span> IE Imbilí Carretera</span>
+          <span class="small">Soporte: crea cursos/materias sin entrar a Firebase.</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="soporte.js"></script>
+</body>
+</html>

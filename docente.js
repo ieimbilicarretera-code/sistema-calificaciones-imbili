@@ -1,25 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getFirestore,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  setDoc,
-  serverTimestamp
+  doc, getDoc, setDoc, updateDoc,
+  collection, getDocs,
+  query, where,
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* =========================
-   Firebase config (calificaciones-imbili)
-   ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
   authDomain: "calificaciones-imbili.firebaseapp.com",
@@ -33,620 +22,539 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* =========================
-   UI refs
-   ========================= */
+document.getElementById("year").textContent = new Date().getFullYear();
+
 const instNameEl = document.getElementById("instName");
-const userNameEl = document.getElementById("userName");
-const userRoleEl = document.getElementById("userRole");
+const docenteNameEl = document.getElementById("docenteName");
 const anioEl = document.getElementById("anioLectivo");
 const periodosEl = document.getElementById("periodos");
 
+const selCurso = document.getElementById("selCurso");
+const selPeriodo = document.getElementById("selPeriodo");
+const selMateria = document.getElementById("selMateria");
+
 const btnBack = document.getElementById("btnBack");
-
-const slCurso = document.getElementById("slCurso");
-const slPeriodo = document.getElementById("slPeriodo");
-const slMateria = document.getElementById("slMateria");
-
 const btnCargar = document.getElementById("btnCargar");
+const btnAddAct = document.getElementById("btnAddAct");
 const btnGuardar = document.getElementById("btnGuardar");
-const btnAddActividad = document.getElementById("btnAddActividad");
 
-const msgOk = document.getElementById("msgOk");
-const msgWarn = document.getElementById("msgWarn");
-const msgErr = document.getElementById("msgErr");
+const msgTop = document.getElementById("msgTop");
+const msgBottom = document.getElementById("msgBottom");
 
-const tableWrap = document.getElementById("tableWrap");
-const countEst = document.getElementById("countEst");
+const studentsEl = document.getElementById("students");
+const totalEstEl = document.getElementById("totalEst");
 
 /* =========================
-   Helpers
+   Helpers UI
    ========================= */
-function showMsg(el, text) {
-  [msgOk, msgWarn, msgErr].forEach(x => { if (x) x.style.display = "none"; });
-  if (!el) return;
+function setMsg(el, text, type=""){
+  el.className = "msg " + (type||"");
   el.textContent = text || "";
   el.style.display = text ? "block" : "none";
 }
 
-function normalizeRole(r) {
-  return String(r || "").trim().toLowerCase();
+function normalizeRole(r){ return String(r||"").trim().toLowerCase(); }
+
+btnBack.addEventListener("click", () => window.location.href = "app.html");
+
+/* =========================
+   Global state
+   ========================= */
+let CFG = { añoLectivo: 2025, periodos: 4, institucion: "Institución Educativa Imbilí Carretera" };
+let PROFILE = null;
+
+let cursos = [];       // [{id, grado, añoLectivo, jornada, nombre}]
+let materias = [];     // [{id, grado, nombre, activa}]
+let actividades = [];  // [{id, titulo}]
+
+let estudiantes = [];  // [{documento, nombres, apellidos, curso}]
+let notasCache = {};   // { documento: { actividades: { actId: {nota, obs} } } }
+
+function getSelected(){
+  const cursoId = selCurso.value;
+  const periodo = selPeriodo.value;
+  const materiaId = selMateria.value;
+  const curso = cursos.find(c => c.id === cursoId) || null;
+  const materia = materias.find(m => m.id === materiaId) || null;
+  return { cursoId, periodo, materiaId, curso, materia };
 }
 
-function cursoToGradoNumber(cursoStr) {
-  // "11A" -> 11, "0A" -> 0
-  const m = String(cursoStr || "").match(/^(\d+)/);
-  return m ? Number(m[1]) : null;
+function actDocId(){
+  const { cursoId, periodo, materiaId } = getSelected();
+  return `${CFG.añoLectivo}_${cursoId}_${periodo}_${materiaId}`;
 }
 
-function clampNota(v) {
-  if (v === "" || v === null || v === undefined) return null;
-  const n = Number(String(v).replace(",", "."));
-  if (Number.isNaN(n)) return null;
-  if (n < 0) return 0;
-  if (n > 5) return 5;
-  return Math.round(n * 100) / 100;
-}
-
-function calcDefinitiva(acts) {
-  const vals = acts
-    .map(a => a.nota)
-    .filter(n => typeof n === "number" && !Number.isNaN(n));
-  if (!vals.length) return null;
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return Math.round(avg * 100) / 100;
+function notaDocId(estDoc){
+  const { cursoId, periodo, materiaId } = getSelected();
+  return `${CFG.añoLectivo}_${cursoId}_${periodo}_${materiaId}_${estDoc}`;
 }
 
 /* =========================
-   Estado en memoria
+   Load config + profile
    ========================= */
-let currentUser = null;
-let currentProfile = null;
-let estudiantes = []; // [{documento, nombres, apellidos, ...}]
-let actividades = [
-  { id: "act1", nombre: "Actividad 1" },
-  { id: "act2", nombre: "Actividad 2" },
-  { id: "act3", nombre: "Actividad 3" }
-];
-
-// notasPorEstudiante[documento] = { actividades: [{id,nombre,nota,obs}], definitiva }
-let notasPorEstudiante = {};
-
-// materia seleccionada
-let selectedMateria = null; // {id, nombre, grado}
-
-/* =========================
-   Cargar config general
-   ========================= */
-async function loadConfigGeneral() {
-  try {
-    const snap = await getDoc(doc(db, "config", "general"));
-    if (snap.exists()) {
-      const cfg = snap.data();
-      if (cfg?.institucion) instNameEl.textContent = cfg.institucion;
-      if (cfg?.añoLectivo != null) anioEl.textContent = String(cfg.añoLectivo);
-      if (cfg?.periodos != null) periodosEl.textContent = String(cfg.periodos);
-    }
-  } catch (e) {
-    // ignore
+async function loadConfig(){
+  const snap = await getDoc(doc(db,"config","general"));
+  if(snap.exists()){
+    CFG = { ...CFG, ...snap.data() };
   }
-}
+  instNameEl.textContent = CFG.institucion || "Institución Educativa Imbilí Carretera";
+  anioEl.textContent = String(CFG.añoLectivo ?? "…");
+  periodosEl.textContent = String(CFG.periodos ?? "…");
 
-/* =========================
-   Cargar perfil usuario
-   ========================= */
-async function loadUserProfile(uid) {
-  const snap = await getDoc(doc(db, "usuarios", uid));
-  if (!snap.exists()) return null;
-  return snap.data();
-}
-
-/* =========================
-   Cargar cursos en select
-   ========================= */
-async function loadCursos() {
-  slCurso.innerHTML = "";
-  try {
-    // cursos: docs tipo "11A", "1A", "0A"
-    const qs = await getDocs(collection(db, "cursos"));
-    const arr = [];
-    qs.forEach(d => {
-      const data = d.data();
-      if (data?.nombre) arr.push(data.nombre);
-      else arr.push(d.id);
-    });
-
-    // ordenar por grado y letra
-    arr.sort((a, b) => {
-      const ga = cursoToGradoNumber(a) ?? 999;
-      const gb = cursoToGradoNumber(b) ?? 999;
-      if (ga !== gb) return ga - gb;
-      return String(a).localeCompare(String(b));
-    });
-
-    arr.forEach(n => {
-      const opt = document.createElement("option");
-      opt.value = n;
-      opt.textContent = n;
-      slCurso.appendChild(opt);
-    });
-
-    if (!arr.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "No hay cursos";
-      slCurso.appendChild(opt);
-    }
-  } catch (e) {
-    console.error(e);
+  // Periodos select
+  selPeriodo.innerHTML = "";
+  const n = Number(CFG.periodos || 4);
+  for(let i=1;i<=n;i++){
     const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "Error cargando cursos";
-    slCurso.appendChild(opt);
+    opt.value = String(i);
+    opt.textContent = String(i);
+    selPeriodo.appendChild(opt);
   }
 }
 
+async function loadProfile(uid){
+  const snap = await getDoc(doc(db,"usuarios",uid));
+  return snap.exists() ? snap.data() : null;
+}
+
 /* =========================
-   Cargar materias según grado
+   Load cursos
    ========================= */
-async function loadMateriasByCurso(cursoSel) {
-  slMateria.innerHTML = `<option value="">-- Selecciona --</option>`;
-  selectedMateria = null;
-
-  const grado = cursoToGradoNumber(cursoSel);
-  if (grado === null) {
-    slMateria.innerHTML = `<option value="">-- Error: curso inválido --</option>`;
-    return;
-  }
-
-  try {
-    // materias where activa==true AND grado==numero
-    const qy = query(
-      collection(db, "materias"),
-      where("activa", "==", true),
-      where("grado", "==", grado)
-    );
-
-    const snap = await getDocs(qy);
-    const mats = [];
-    snap.forEach(d => {
-      const data = d.data();
-      mats.push({
-        id: d.id,
-        nombre: data?.nombre || d.id,
-        grado: data?.grado
-      });
+async function loadCursos(){
+  const snap = await getDocs(collection(db,"cursos"));
+  cursos = [];
+  snap.forEach(d => {
+    const x = d.data();
+    // esperamos: añoLectivo, grado, nombre (ej 11A), jornada
+    cursos.push({
+      id: d.id,
+      ...x
     });
+  });
 
-    mats.sort((a, b) => String(a.nombre).localeCompare(String(b.nombre)));
+  // filtrar por añoLectivo si existe
+  const anio = Number(CFG.añoLectivo || 0);
+  const filtered = cursos.filter(c => Number(c.añoLectivo || anio) === anio);
+  const list = filtered.length ? filtered : cursos;
 
-    if (!mats.length) {
-      slMateria.innerHTML = `<option value="">(No hay materias activas para grado ${grado})</option>`;
-      return;
-    }
-
-    mats.forEach(m => {
+  selCurso.innerHTML = "";
+  list
+    .sort((a,b)=> String(a.nombre||a.id).localeCompare(String(b.nombre||b.id)))
+    .forEach(c => {
       const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = m.nombre;
-      slMateria.appendChild(opt);
+      opt.value = c.id;
+      opt.textContent = c.nombre || c.id;
+      selCurso.appendChild(opt);
     });
 
-  } catch (e) {
-    console.error(e);
-    slMateria.innerHTML = `<option value="">-- Error cargando materias --</option>`;
-  }
+  // Guardar solo lista final
+  cursos = list;
 }
 
 /* =========================
-   Render tabla (estudiantes + actividades)
+   Load materias by grado
    ========================= */
-function renderTable() {
-  if (!selectedMateria) {
-    tableWrap.innerHTML = `<div class="muted">Selecciona una materia.</div>`;
-    countEst.textContent = "0";
+async function loadMateriasForCurso(){
+  setMsg(msgTop,"","");
+
+  const { curso } = getSelected();
+  if(!curso){
+    selMateria.innerHTML = `<option value="">Selecciona un curso primero…</option>`;
     return;
   }
 
-  if (!estudiantes.length) {
-    tableWrap.innerHTML = `<div class="muted">No hay estudiantes en este curso (o no se han cargado).</div>`;
-    countEst.textContent = "0";
+  const grado = Number(curso.grado); // importante
+  selMateria.innerHTML = `<option value="">Cargando materias…</option>`;
+
+  // Evitamos índices compuestos: traemos todas y filtramos cliente (pocas materias)
+  const snap = await getDocs(collection(db,"materias"));
+  materias = [];
+  snap.forEach(d=>{
+    const x = d.data();
+    materias.push({ id:d.id, ...x });
+  });
+
+  const list = materias
+    .filter(m => Number(m.grado) === grado && (m.activa === true || m.activa === undefined))
+    .sort((a,b)=> String(a.nombre||"").localeCompare(String(b.nombre||"")));
+
+  selMateria.innerHTML = `<option value="">Selecciona…</option>`;
+  if(list.length === 0){
+    selMateria.innerHTML = `<option value="">(No hay materias para grado ${grado})</option>`;
+    setMsg(msgTop, `No se encontraron materias para el grado ${grado}. Revisa Firestore: materias (grado=${grado}, activa=true).`, "warn");
     return;
   }
 
-  countEst.textContent = String(estudiantes.length);
-
-  // header columnas
-  const headActs = actividades.map(a => {
-    return `
-      <th class="thAct">
-        <input class="actName" data-actname="${a.id}" value="${a.nombre}" />
-        <div class="muted small">Nota / Observación</div>
-      </th>
-    `;
-  }).join("");
-
-  const rows = estudiantes.map(st => {
-    const docu = st.documento;
-    const estado = notasPorEstudiante[docu] || { actividades: actividades.map(a => ({...a, nota:null, obs:""})), definitiva:null };
-    const def = estado.definitiva;
-
-    const actCells = estado.actividades.map(a => {
-      const notaVal = (typeof a.nota === "number") ? String(a.nota) : "";
-      const obsVal = a.obs || "";
-      return `
-        <td class="tdAct">
-          <input class="notaInput" type="number" min="0" max="5" step="0.01"
-            data-doc="${docu}" data-act="${a.id}" value="${notaVal}" placeholder="0.0 - 5.0" />
-          <textarea class="obsInput" rows="2"
-            data-doc="${docu}" data-act="${a.id}" placeholder="Observación / actividad...">${obsVal}</textarea>
-        </td>
-      `;
-    }).join("");
-
-    return `
-      <tr>
-        <td class="tdDoc">${docu}</td>
-        <td class="tdName">${(st.apellidos || "").toUpperCase()} ${(st.nombres || "").toUpperCase()}</td>
-        ${actCells}
-        <td class="tdDef">
-          <div class="defBox">${def === null ? "—" : def.toFixed(2)}</div>
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  tableWrap.innerHTML = `
-    <div class="responsiveTable">
-      <table class="gradeTable">
-        <thead>
-          <tr>
-            <th>Documento</th>
-            <th>Nombre</th>
-            ${headActs}
-            <th>Definitiva</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-
-  // eventos para cambiar nombre actividad
-  tableWrap.querySelectorAll(".actName").forEach(inp => {
-    inp.addEventListener("input", (e) => {
-      const actId = e.target.getAttribute("data-actname");
-      const act = actividades.find(x => x.id === actId);
-      if (act) {
-        act.nombre = String(e.target.value || "").trim() || act.nombre;
-        // sincronizar nombres dentro de notasPorEstudiante
-        Object.keys(notasPorEstudiante).forEach(docu => {
-          notasPorEstudiante[docu].actividades.forEach(a => {
-            if (a.id === actId) a.nombre = act.nombre;
-          });
-        });
-      }
-    });
+  list.forEach(m=>{
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.nombre || "(Sin nombre)";
+    selMateria.appendChild(opt);
   });
 
-  // eventos de nota y observación
-  tableWrap.querySelectorAll(".notaInput").forEach(inp => {
-    inp.addEventListener("input", (e) => {
-      const docu = e.target.getAttribute("data-doc");
-      const actId = e.target.getAttribute("data-act");
-      const n = clampNota(e.target.value);
-
-      ensureStudentState(docu);
-      const act = notasPorEstudiante[docu].actividades.find(a => a.id === actId);
-      if (act) act.nota = n;
-
-      notasPorEstudiante[docu].definitiva = calcDefinitiva(notasPorEstudiante[docu].actividades);
-      // refrescar solo la definitiva rápido
-      renderOnlyDef(docu);
-    });
-  });
-
-  tableWrap.querySelectorAll(".obsInput").forEach(inp => {
-    inp.addEventListener("input", (e) => {
-      const docu = e.target.getAttribute("data-doc");
-      const actId = e.target.getAttribute("data-act");
-      const val = String(e.target.value || "");
-
-      ensureStudentState(docu);
-      const act = notasPorEstudiante[docu].actividades.find(a => a.id === actId);
-      if (act) act.obs = val;
-    });
-  });
-}
-
-function renderOnlyDef(docu) {
-  // re-render mínima: buscamos la fila y cambiamos el div
-  const def = notasPorEstudiante[docu]?.definitiva ?? null;
-  const row = tableWrap.querySelector(`input[data-doc="${docu}"]`)?.closest("tr");
-  if (!row) return;
-  const box = row.querySelector(".defBox");
-  if (box) box.textContent = (def === null) ? "—" : def.toFixed(2);
-}
-
-function ensureStudentState(docu) {
-  if (!notasPorEstudiante[docu]) {
-    notasPorEstudiante[docu] = {
-      actividades: actividades.map(a => ({ id: a.id, nombre: a.nombre, nota: null, obs: "" })),
-      definitiva: null
-    };
-  } else {
-    // si agregaron actividades nuevas, las anexamos
-    const existingIds = new Set(notasPorEstudiante[docu].actividades.map(a => a.id));
-    actividades.forEach(a => {
-      if (!existingIds.has(a.id)) {
-        notasPorEstudiante[docu].actividades.push({ id: a.id, nombre: a.nombre, nota: null, obs: "" });
-      }
-    });
-    // actualizar nombres
-    notasPorEstudiante[docu].actividades.forEach(a => {
-      const ref = actividades.find(x => x.id === a.id);
-      if (ref) a.nombre = ref.nombre;
-    });
-  }
+  // Guardamos solo las del grado para lookup
+  materias = list;
 }
 
 /* =========================
-   Cargar estudiantes (por curso)
+   Actividades (por curso+periodo+materia)
    ========================= */
-async function cargarEstudiantes() {
-  showMsg(msgOk, "");
-  showMsg(msgWarn, "");
-  showMsg(msgErr, "");
-
-  const cursoSel = slCurso.value;
-  const periodoSel = slPeriodo.value;
-  const materiaId = slMateria.value;
-
-  if (!cursoSel || !periodoSel || !materiaId) {
-    showMsg(msgWarn, "Selecciona curso, período y materia.");
-    return;
-  }
-
-  // guardar materia seleccionada
-  selectedMateria = { id: materiaId, nombre: slMateria.options[slMateria.selectedIndex]?.textContent || "", grado: cursoToGradoNumber(cursoSel) };
-
-  try {
-    // estudiantes where activo==true AND curso == cursoSel
-    const qy = query(
-      collection(db, "estudiantes"),
-      where("activo", "==", true),
-      where("curso", "==", cursoSel)
-    );
-
-    const snap = await getDocs(qy);
-    estudiantes = [];
-    snap.forEach(d => {
-      const st = d.data();
-      estudiantes.push({
-        documento: st.documento || d.id,
-        nombres: st.nombres || "",
-        apellidos: st.apellidos || ""
-      });
-    });
-
-    // ordenar por apellido/nombre
-    estudiantes.sort((a,b) => {
-      const aa = (a.apellidos + " " + a.nombres).toUpperCase();
-      const bb = (b.apellidos + " " + b.nombres).toUpperCase();
-      return aa.localeCompare(bb);
-    });
-
-    // cargar notas existentes si las hay
-    await loadExistingNotas(cursoSel, periodoSel, materiaId);
-
-    showMsg(msgOk, `Listo. Estudiantes cargados del curso ${cursoSel}.`);
-    renderTable();
-  } catch (e) {
-    console.error(e);
-    showMsg(msgErr, "No se pudieron cargar estudiantes. Revisa reglas/permisos o conexión.");
+async function loadActividades(){
+  actividades = [];
+  const id = actDocId();
+  const snap = await getDoc(doc(db,"actividades",id));
+  if(snap.exists()){
+    const data = snap.data();
+    actividades = Array.isArray(data.items) ? data.items : [];
+  }else{
+    // crear doc vacío (para que exista)
+    await setDoc(doc(db,"actividades",id), {
+      añoLectivo: Number(CFG.añoLectivo || 0),
+      curso: getSelected().cursoId,
+      periodo: Number(getSelected().periodo || 1),
+      materiaId: getSelected().materiaId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      items: []
+    }, { merge:true });
+    actividades = [];
   }
 }
 
+async function addActividad(){
+  const { cursoId, periodo, materiaId } = getSelected();
+  if(!cursoId || !periodo || !materiaId){
+    return setMsg(msgTop,"Selecciona curso, período y materia primero.","warn");
+  }
+
+  const titulo = prompt("Nombre de la actividad (ej: Taller 1, Quiz, Exposición):");
+  if(!titulo) return;
+
+  const id = "A" + Math.random().toString(16).slice(2,10);
+  const item = { id, titulo: titulo.trim() };
+
+  const docRef = doc(db,"actividades", actDocId());
+  await loadActividades();
+  const next = [...actividades, item];
+
+  await updateDoc(docRef, {
+    items: next,
+    updatedAt: serverTimestamp()
+  });
+
+  actividades = next;
+  renderStudents(); // refrescar UI
+  setMsg(msgTop, "Actividad agregada.", "ok");
+}
+
 /* =========================
-   Cargar notas existentes (si ya se guardaron antes)
+   Estudiantes + notas existentes
    ========================= */
-async function loadExistingNotas(cursoSel, periodoSel, materiaId) {
-  notasPorEstudiante = {};
+async function loadEstudiantes(){
+  const { cursoId } = getSelected();
+  const q = query(collection(db,"estudiantes"), where("curso","==",cursoId));
+  const snap = await getDocs(q);
 
-  // estrategia simple: cada estudiante tiene doc en "notas" con id:
-  // 2025_11A_2_<materiaId>_<documento>
-  const anio = (anioEl?.textContent || "").trim() || "2025";
+  estudiantes = [];
+  snap.forEach(d=>{
+    const x = d.data();
+    estudiantes.push({
+      documento: x.documento || d.id,
+      nombres: x.nombres || "",
+      apellidos: x.apellidos || "",
+      curso: x.curso || cursoId,
+      activo: x.activo !== false
+    });
+  });
 
-  const tasks = estudiantes.map(async (st) => {
-    const id = `${anio}_${cursoSel}_${periodoSel}_${materiaId}_${st.documento}`;
-    const snap = await getDoc(doc(db, "notas", id));
-    if (snap.exists()) {
-      const data = snap.data();
-      // reconstruir actividades
-      const savedActs = Array.isArray(data?.actividades) ? data.actividades : [];
-      notasPorEstudiante[st.documento] = {
-        actividades: savedActs.map(a => ({
-          id: a.id,
-          nombre: a.nombre || a.id,
-          nota: (typeof a.nota === "number") ? a.nota : null,
-          obs: a.obs || ""
-        })),
-        definitiva: (typeof data?.definitiva === "number") ? data.definitiva : null
-      };
+  estudiantes = estudiantes.filter(e => e.activo !== false)
+    .sort((a,b)=> (a.apellidos+a.nombres).localeCompare(b.apellidos+b.nombres));
 
-      // sincronizar lista global de actividades (por si el periodo ya tenía más)
-      savedActs.forEach(a => {
-        if (!actividades.find(x => x.id === a.id)) {
-          actividades.push({ id: a.id, nombre: a.nombre || a.id });
-        }
-      });
+  totalEstEl.textContent = String(estudiantes.length);
+}
+
+async function loadNotasExistentes(){
+  notasCache = {};
+  // Para no hacer query compuesta, leemos por ID determinístico (una lectura por estudiante)
+  const promises = estudiantes.map(async (e)=>{
+    const snap = await getDoc(doc(db,"notas", notaDocId(e.documento)));
+    if(snap.exists()){
+      notasCache[e.documento] = snap.data();
     }
   });
+  await Promise.all(promises);
+}
 
-  await Promise.all(tasks);
+/* =========================
+   UI Render estudiantes
+   ========================= */
+function calcPromedioFor(estDoc){
+  const data = notasCache[estDoc] || {};
+  const acts = data.actividades || {};
+  const nums = [];
 
-  // asegurar que todos tengan estado
-  estudiantes.forEach(st => ensureStudentState(st.documento));
-  // recalcular definitivas por seguridad
-  estudiantes.forEach(st => {
-    notasPorEstudiante[st.documento].definitiva = calcDefinitiva(notasPorEstudiante[st.documento].actividades);
+  for(const act of actividades){
+    const v = acts?.[act.id]?.nota;
+    const n = Number(v);
+    if(!isNaN(n) && n >= 0 && n <= 5) nums.push(n);
+  }
+  if(nums.length === 0) return "";
+  const avg = nums.reduce((a,b)=>a+b,0) / nums.length;
+  return avg.toFixed(2);
+}
+
+function renderStudents(){
+  studentsEl.innerHTML = "";
+
+  const { materia } = getSelected();
+  if(!materia){
+    setMsg(msgBottom,"Selecciona una materia.","warn");
+    return;
+  }
+  setMsg(msgBottom,"","");
+
+  if(estudiantes.length === 0){
+    setMsg(msgBottom,"No hay estudiantes en este curso (o no están activos).","warn");
+    return;
+  }
+
+  // Si no hay actividades aún, lo informamos pero igual mostramos tarjetas
+  if(actividades.length === 0){
+    setMsg(msgTop,"No hay actividades creadas aún. Usa “+ Agregar actividad”.","warn");
+  }
+
+  estudiantes.forEach(e=>{
+    const card = document.createElement("div");
+    card.className = "student-card";
+
+    const fullName = `${e.apellidos} ${e.nombres}`.trim().replace(/\s+/g," ");
+
+    // aseguramos estructura cache
+    if(!notasCache[e.documento]) notasCache[e.documento] = { actividades: {} };
+    if(!notasCache[e.documento].actividades) notasCache[e.documento].actividades = {};
+
+    const avg = calcPromedioFor(e.documento);
+
+    card.innerHTML = `
+      <div class="student-head">
+        <div class="who">
+          <b>${fullName || "(Sin nombre)"}</b>
+          <span>Documento: ${e.documento}</span>
+        </div>
+        <div class="avg">
+          <b>Definitiva: <span id="avg_${e.documento}">${avg || "—"}</span></b>
+          <div class="small">Promedio actividades</div>
+        </div>
+      </div>
+
+      <div style="padding:10px 12px;">
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th style="width:34%">Actividad</th>
+              <th style="width:12%">Nota (0-5)</th>
+              <th>Observación / Evidencia</th>
+            </tr>
+          </thead>
+          <tbody id="tbody_${e.documento}">
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const tbody = card.querySelector(`#tbody_${CSS.escape(e.documento)}`);
+
+    if(actividades.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="3" class="small">Aún no hay actividades creadas.</td>`;
+      tbody.appendChild(tr);
+    }else{
+      actividades.forEach(act=>{
+        const stored = notasCache[e.documento].actividades[act.id] || {};
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>
+            <div class="activity-name">${act.titulo}</div>
+            <div class="small">ID: ${act.id}</div>
+          </td>
+          <td>
+            <input class="note-input" type="number" step="0.1" min="0" max="5"
+              placeholder="0.0"
+              value="${stored.nota ?? ""}"
+              data-doc="${e.documento}"
+              data-act="${act.id}"
+              data-kind="nota"
+            />
+          </td>
+          <td>
+            <textarea
+              placeholder="Ej: Taller sobre fracciones, participación, etc."
+              data-doc="${e.documento}"
+              data-act="${act.id}"
+              data-kind="obs"
+            >${stored.obs ?? ""}</textarea>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    studentsEl.appendChild(card);
+  });
+
+  // listeners para actualizar cache + promedio
+  studentsEl.querySelectorAll("input[data-kind='nota']").forEach(inp=>{
+    inp.addEventListener("input", () => {
+      const docId = inp.dataset.doc;
+      const actId = inp.dataset.act;
+
+      const v = inp.value;
+      const n = Number(v);
+      if(!notasCache[docId]) notasCache[docId] = { actividades:{} };
+      if(!notasCache[docId].actividades) notasCache[docId].actividades = {};
+      if(!notasCache[docId].actividades[actId]) notasCache[docId].actividades[actId] = {};
+
+      notasCache[docId].actividades[actId].nota = v === "" ? "" : n;
+
+      const avg = calcPromedioFor(docId);
+      const el = document.getElementById(`avg_${docId}`);
+      if(el) el.textContent = avg || "—";
+    });
+  });
+
+  studentsEl.querySelectorAll("textarea[data-kind='obs']").forEach(tx=>{
+    tx.addEventListener("input", () => {
+      const docId = tx.dataset.doc;
+      const actId = tx.dataset.act;
+
+      if(!notasCache[docId]) notasCache[docId] = { actividades:{} };
+      if(!notasCache[docId].actividades) notasCache[docId].actividades = {};
+      if(!notasCache[docId].actividades[actId]) notasCache[docId].actividades[actId] = {};
+
+      notasCache[docId].actividades[actId].obs = tx.value || "";
+    });
   });
 }
 
 /* =========================
    Guardar notas
    ========================= */
-async function guardarNotas() {
-  showMsg(msgOk, "");
-  showMsg(msgWarn, "");
-  showMsg(msgErr, "");
-
-  const cursoSel = slCurso.value;
-  const periodoSel = slPeriodo.value;
-  const materiaId = slMateria.value;
-
-  if (!cursoSel || !periodoSel || !materiaId) {
-    showMsg(msgWarn, "Selecciona curso, período y materia.");
-    return;
+async function guardarNotas(){
+  const { cursoId, periodo, materiaId, materia } = getSelected();
+  if(!cursoId || !periodo || !materiaId){
+    return setMsg(msgTop, "Selecciona curso, período y materia.", "warn");
   }
-  if (!selectedMateria) {
-    showMsg(msgWarn, "Selecciona una materia válida.");
-    return;
-  }
-  if (!estudiantes.length) {
-    showMsg(msgWarn, "Primero carga estudiantes.");
-    return;
-  }
+  if(estudiantes.length === 0) return setMsg(msgTop, "No hay estudiantes cargados.", "warn");
 
-  const anio = (anioEl?.textContent || "").trim() || "2025";
+  const batch = writeBatch(db);
 
-  try {
-    // guardado “uno por estudiante”
-    // (si luego quieres batch grande, lo optimizamos)
-    for (const st of estudiantes) {
-      const state = notasPorEstudiante[st.documento];
-      const id = `${anio}_${cursoSel}_${periodoSel}_${materiaId}_${st.documento}`;
+  estudiantes.forEach(e=>{
+    const docId = e.documento;
+    const avg = calcPromedioFor(docId);
+    const payload = {
+      añoLectivo: Number(CFG.añoLectivo || 0),
+      curso: cursoId,
+      periodo: Number(periodo),
+      materiaId: materiaId,
+      materiaNombre: materia?.nombre || "",
+      estudianteDoc: docId,
+      estudianteNombre: `${e.apellidos} ${e.nombres}`.trim(),
+      actividades: (notasCache[docId]?.actividades) || {},
+      definitiva: avg ? Number(avg) : null,
+      updatedAt: serverTimestamp(),
+      updatedByUid: auth.currentUser?.uid || ""
+    };
 
-      const payload = {
-        anio: Number(anio) || anio,
-        curso: cursoSel,
-        periodo: Number(periodoSel),
-        materiaId,
-        materiaNombre: selectedMateria.nombre,
-        estudianteDocumento: st.documento,
-        estudianteNombre: `${(st.apellidos||"").toUpperCase()} ${(st.nombres||"").toUpperCase()}`.trim(),
-        docenteUid: currentUser.uid,
-        docenteNombre: currentProfile?.nombre || "",
-        actividades: (state?.actividades || []).map(a => ({
-          id: a.id,
-          nombre: a.nombre,
-          nota: (typeof a.nota === "number") ? a.nota : null,
-          obs: a.obs || ""
-        })),
-        definitiva: (typeof state?.definitiva === "number") ? state.definitiva : null,
-        updatedAt: serverTimestamp()
-      };
-
-      await setDoc(doc(db, "notas", id), payload, { merge: true });
-    }
-
-    showMsg(msgOk, "✅ Notas guardadas correctamente.");
-  } catch (e) {
-    console.error(e);
-    showMsg(msgErr, "❌ No se pudieron guardar las notas. Revisa reglas/permisos o conexión.");
-  }
-}
-
-/* =========================
-   Agregar actividad (columna)
-   ========================= */
-function addActividad() {
-  const next = actividades.length + 1;
-  const id = `act${Date.now()}`;
-  actividades.push({ id, nombre: `Actividad ${next}` });
-
-  // agregar a cada estudiante
-  estudiantes.forEach(st => {
-    ensureStudentState(st.documento);
+    batch.set(doc(db,"notas", notaDocId(docId)), payload, { merge:true });
   });
 
-  renderTable();
+  await batch.commit();
+  setMsg(msgTop, "✅ Notas guardadas correctamente.", "ok");
 }
 
 /* =========================
-   Eventos UI
+   Events
    ========================= */
-btnBack?.addEventListener("click", () => {
-  // volver al panel principal
-  window.location.href = "app.html";
+selCurso.addEventListener("change", async () => {
+  await loadMateriasForCurso();
 });
 
-slCurso?.addEventListener("change", async () => {
-  await loadMateriasByCurso(slCurso.value);
+btnCargar.addEventListener("click", async () => {
+  try{
+    setMsg(msgTop,"",""); setMsg(msgBottom,"","");
 
-  // reset vista
-  estudiantes = [];
-  notasPorEstudiante = {};
-  selectedMateria = null;
-  tableWrap.innerHTML = `<div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>`;
-  countEst.textContent = "0";
+    const { cursoId, periodo, materiaId } = getSelected();
+    if(!cursoId || !periodo || !materiaId){
+      return setMsg(msgTop, "Selecciona curso, período y materia.", "warn");
+    }
+
+    await loadActividades();
+    await loadEstudiantes();
+    await loadNotasExistentes();
+    renderStudents();
+
+    setMsg(msgTop, `Listo. Estudiantes cargados del curso ${cursoId}.`, "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgTop, "❌ Error cargando estudiantes/materias. Revisa permisos y consola.", "err");
+  }
 });
 
-slMateria?.addEventListener("change", () => {
-  // reset tabla hasta cargar estudiantes
-  estudiantes = [];
-  notasPorEstudiante = {};
-  selectedMateria = null;
-  tableWrap.innerHTML = `<div class="muted">Selecciona filtros y pulsa “Cargar estudiantes”.</div>`;
-  countEst.textContent = "0";
+btnAddAct.addEventListener("click", async () => {
+  try{
+    await addActividad();
+  }catch(e){
+    console.error(e);
+    setMsg(msgTop, "❌ No se pudo agregar actividad. Revisa permisos/reglas.", "err");
+  }
 });
 
-btnCargar?.addEventListener("click", cargarEstudiantes);
-btnGuardar?.addEventListener("click", guardarNotas);
-btnAddActividad?.addEventListener("click", addActividad);
+btnGuardar.addEventListener("click", async () => {
+  try{
+    await guardarNotas();
+  }catch(e){
+    console.error(e);
+    setMsg(msgTop, "❌ No se pudo guardar. Revisa permisos/reglas.", "err");
+  }
+});
 
 /* =========================
-   Guard de sesión
+   Auth guard
    ========================= */
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "index.html";
-    return;
+  if(!user) return (window.location.href="index.html");
+
+  try{
+    await loadConfig();
+
+    PROFILE = await loadProfile(user.uid);
+    if(!PROFILE){
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+      await signOut(auth);
+      return (window.location.href="index.html");
+    }
+    if(PROFILE.activo !== true){
+      alert("Usuario inactivo.");
+      await signOut(auth);
+      return (window.location.href="index.html");
+    }
+
+    const role = normalizeRole(PROFILE.rol);
+    const okRole = ["docente","soporte","rector","rectora","coordinador","coordinador academico","coordinador académico"].includes(role);
+    if(!okRole){
+      alert("No tienes permisos para el módulo docente.");
+      window.location.href = "app.html";
+      return;
+    }
+
+    docenteNameEl.textContent = PROFILE.nombre || "(Sin nombre)";
+
+    await loadCursos();
+    await loadMateriasForCurso();
+
+  }catch(e){
+    console.error(e);
+    setMsg(msgTop, "Error inicializando. Revisa consola.", "err");
   }
-
-  currentUser = user;
-
-  await loadConfigGeneral();
-
-  const prof = await loadUserProfile(user.uid);
-  if (!prof) {
-    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-    window.location.href = "index.html";
-    return;
-  }
-  if (prof.activo !== true) {
-    alert("Usuario inactivo. Contacta a soporte.");
-    window.location.href = "index.html";
-    return;
-  }
-
-  currentProfile = prof;
-
-  userNameEl.textContent = prof.nombre || "(Sin nombre)";
-  userRoleEl.textContent = prof.rol || "(Sin rol)";
-
-  const role = normalizeRole(prof.rol);
-  const allowed = ["docente", "soporte", "rector", "rectora", "coordinador", "coordinador académico", "coordinador academico"];
-  if (!allowed.includes(role)) {
-    alert("No tienes permisos para el módulo Docente.");
-    window.location.href = "app.html";
-    return;
-  }
-
-  await loadCursos();
-  await loadMateriasByCurso(slCurso.value);
-
-  showMsg(msgOk, "");
-  showMsg(msgWarn, "");
-  showMsg(msgErr, "");
 });

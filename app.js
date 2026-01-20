@@ -103,6 +103,18 @@ function renderModules(roleRaw){
     href:"docente.html",
     enabled:isDocente
   });
+
+    const isSoporte = (role === "soporte");
+
+  addModule({
+    icon:"AD",
+    title:"Soporte • Configuración",
+    desc:"Crear/editar cursos y materias desde el sistema (sin entrar a Firebase).",
+    badge:"Soporte",
+    href:"soporte.html",
+    enabled:isSoporte
+  });
+
 }
 
 btnLogout.addEventListener("click", async () => {

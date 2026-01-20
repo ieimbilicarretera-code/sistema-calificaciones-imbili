@@ -1,19 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import {
   getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  query,
-  where
+  doc, getDoc, setDoc, updateDoc,
+  collection, getDocs,
+  query, where,
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 /* =========================
@@ -32,62 +25,249 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* =========================
-   UI
-   ========================= */
-const yearEl = document.getElementById("year");
-if (yearEl) yearEl.textContent = new Date().getFullYear();
+document.getElementById("year").textContent = new Date().getFullYear();
 
 const instNameEl = document.getElementById("instName");
+const secNameEl = document.getElementById("secName");
 const anioEl = document.getElementById("anioLectivo");
-
-const selCurso = document.getElementById("selCurso");
-const cursoInfo = document.getElementById("cursoInfo");
-const btnCargar = document.getElementById("btnCargar");
-const btnReload = document.getElementById("btnReload");
+const periodosEl = document.getElementById("periodos");
 const btnBack = document.getElementById("btnBack");
 
-const msg = document.getElementById("msg");
-const tbody = document.getElementById("tbody");
-
-/* Individual */
-const tipoDoc = document.getElementById("tipoDoc");
-const numDoc = document.getElementById("numDoc");
-const nombre = document.getElementById("nombre");
-const edad = document.getElementById("edad");
-const obs = document.getElementById("obs");
-const activoEst = document.getElementById("activoEst");
-const btnGuardarUno = document.getElementById("btnGuardarUno");
-
-/* CSV */
-const fileCsv = document.getElementById("fileCsv");
-const btnImportar = document.getElementById("btnImportar");
-const btnPlantillaCsv = document.getElementById("btnPlantillaCsv");
+btnBack.addEventListener("click", () => window.location.href = "app.html");
 
 /* =========================
-   Estado
+   Form refs
    ========================= */
-let currentUser = null;
-let currentProfile = null;
-let configGeneral = { anio: 2025, institucion: "Institución Educativa Imbilí Carretera" };
+const stTipoDoc = document.getElementById("stTipoDoc");
+const stDocumento = document.getElementById("stDocumento");
+const stNombres = document.getElementById("stNombres");
+const stApellidos = document.getElementById("stApellidos");
+const stGrado = document.getElementById("stGrado");
+const stCurso = document.getElementById("stCurso");
+const stJornada = document.getElementById("stJornada");
+const stNacimiento = document.getElementById("stNacimiento");
+const stEdad = document.getElementById("stEdad");
+const stCorreo = document.getElementById("stCorreo");
+const stTelefono = document.getElementById("stTelefono");
+const stDireccion = document.getElementById("stDireccion");
 
-let cursosCache = []; // [{id, nombre, jornada, grado}]
+const btnGuardar = document.getElementById("btnGuardar");
+const btnLimpiar = document.getElementById("btnLimpiar");
+const btnDesactivar = document.getElementById("btnDesactivar");
+
+const msgForm = document.getElementById("msgForm");
+
+/* CSV refs */
+const csvFile = document.getElementById("csvFile");
+const btnPlantilla = document.getElementById("btnPlantilla");
+const btnImportar = document.getElementById("btnImportar");
+const msgCSV = document.getElementById("msgCSV");
+
+/* List refs */
+const fCurso = document.getElementById("fCurso");
+const fBuscar = document.getElementById("fBuscar");
+const btnRefrescar = document.getElementById("btnRefrescar");
+const listado = document.getElementById("listado");
+const totalEstEl = document.getElementById("totalEst");
+const msgList = document.getElementById("msgList");
 
 /* =========================
    Helpers
    ========================= */
-function setMsg(text, ok=false){
-  if(!msg) return;
-  msg.textContent = text || "";
-  msg.className = "info " + (ok ? "ok" : "err");
+function setMsg(el, text, type=""){
+  el.className = "msg " + (type||"");
+  el.textContent = text || "";
+  el.style.display = text ? "block" : "none";
 }
 
-function normRole(r){
-  return (r || "").toString().trim().toLowerCase();
+function normalizeRole(r){ return String(r||"").trim().toLowerCase(); }
+
+function sanitizeUpper(s){
+  return String(s||"").trim().toUpperCase();
 }
 
-function downloadFile(filename, content, mime="text/csv;charset=utf-8"){
-  const blob = new Blob([content], { type: mime });
+function toNumOrNull(v){
+  if(v === "" || v == null) return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+/* =========================
+   Config + Profile
+   ========================= */
+let CFG = { añoLectivo: 2025, periodos: 4, institucion: "Institución Educativa Imbilí Carretera" };
+let PROFILE = null;
+let cursos = []; // [{id,nombre,grado,añoLectivo,jornada}]
+let grados = []; // [0..11] o desde collection
+
+async function loadConfig(){
+  const snap = await getDoc(doc(db,"config","general"));
+  if(snap.exists()) CFG = { ...CFG, ...snap.data() };
+
+  instNameEl.textContent = CFG.institucion || "Institución Educativa Imbilí Carretera";
+  anioEl.textContent = String(CFG.añoLectivo ?? "…");
+  periodosEl.textContent = String(CFG.periodos ?? "…");
+}
+
+async function loadProfile(uid){
+  const snap = await getDoc(doc(db,"usuarios",uid));
+  return snap.exists() ? snap.data() : null;
+}
+
+/* =========================
+   Cargar cursos y grados
+   ========================= */
+async function loadCursos(){
+  const snap = await getDocs(collection(db,"cursos"));
+  cursos = [];
+  snap.forEach(d=>{
+    cursos.push({ id:d.id, ...d.data() });
+  });
+
+  const anio = Number(CFG.añoLectivo || 0);
+  const filtered = cursos.filter(c => Number(c.añoLectivo || anio) === anio);
+  cursos = filtered.length ? filtered : cursos;
+
+  // Grados disponibles desde cursos
+  const setG = new Set();
+  cursos.forEach(c=>{
+    if(c.grado != null) setG.add(Number(c.grado));
+  });
+  grados = Array.from(setG).sort((a,b)=>a-b);
+
+  // llenar selects
+  stGrado.innerHTML = "";
+  grados.forEach(g=>{
+    const opt = document.createElement("option");
+    opt.value = String(g);
+    opt.textContent = String(g);
+    stGrado.appendChild(opt);
+  });
+
+  // Cursos select (según grado)
+  refreshCursosSelects();
+
+  // filtro listado cursos (todos)
+  fCurso.innerHTML = `<option value="">(Todos)</option>`;
+  cursos
+    .sort((a,b)=> String(a.nombre||a.id).localeCompare(String(b.nombre||b.id)))
+    .forEach(c=>{
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nombre || c.id;
+      fCurso.appendChild(opt);
+    });
+}
+
+function refreshCursosSelects(){
+  const g = Number(stGrado.value || "");
+  const list = cursos
+    .filter(c => Number(c.grado) === g)
+    .sort((a,b)=> String(a.nombre||a.id).localeCompare(String(b.nombre||b.id)));
+
+  stCurso.innerHTML = "";
+  list.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.nombre || c.id;
+    stCurso.appendChild(opt);
+  });
+
+  if(list.length === 0){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(No hay cursos para este grado)";
+    stCurso.appendChild(opt);
+  }
+}
+
+stGrado.addEventListener("change", refreshCursosSelects);
+
+/* =========================
+   Form actions
+   ========================= */
+function limpiar(){
+  stTipoDoc.value = "TI";
+  stDocumento.value = "";
+  stNombres.value = "";
+  stApellidos.value = "";
+  if(stGrado.options.length) stGrado.selectedIndex = 0;
+  refreshCursosSelects();
+  stJornada.value = "Mañana";
+  stNacimiento.value = "";
+  stEdad.value = "";
+  stCorreo.value = "";
+  stTelefono.value = "";
+  stDireccion.value = "";
+  setMsg(msgForm,"","");
+}
+btnLimpiar.addEventListener("click", limpiar);
+
+async function guardarEstudiante(activo=true){
+  setMsg(msgForm,"","");
+
+  const documento = String(stDocumento.value||"").trim();
+  const nombres = sanitizeUpper(stNombres.value);
+  const apellidos = sanitizeUpper(stApellidos.value);
+  const grado = Number(stGrado.value || "");
+  const cursoId = String(stCurso.value||"").trim();
+
+  if(!documento || !nombres || !apellidos || !cursoId || isNaN(grado)){
+    setMsg(msgForm,"Faltan campos obligatorios (*).","warn");
+    return;
+  }
+
+  const cursoObj = cursos.find(c=>c.id===cursoId);
+  const payload = {
+    tipoDoc: String(stTipoDoc.value||"TI"),
+    documento,
+    nombres,
+    apellidos,
+    grado,
+    curso: cursoId,
+    jornada: String(stJornada.value||cursoObj?.jornada||"Mañana"),
+    nacimiento: stNacimiento.value ? String(stNacimiento.value) : "",
+    edad: toNumOrNull(stEdad.value),
+    correo: String(stCorreo.value||"").trim(),
+    telefono: String(stTelefono.value||"").trim(),
+    direccion: String(stDireccion.value||"").trim(),
+    activo: !!activo,
+    añoLectivo: Number(CFG.añoLectivo || 0),
+    updatedAt: serverTimestamp()
+  };
+
+  await setDoc(doc(db,"estudiantes",documento), payload, { merge:true });
+  setMsg(msgForm, `✅ Guardado: ${documento} - ${apellidos} ${nombres}`, "ok");
+
+  // refrescar listado
+  await refrescarListado();
+}
+
+btnGuardar.addEventListener("click", () => guardarEstudiante(true));
+
+btnDesactivar.addEventListener("click", async () => {
+  const documento = String(stDocumento.value||"").trim();
+  if(!documento) return setMsg(msgForm,"Escribe un documento para desactivar.","warn");
+  if(!confirm("¿Seguro que deseas desactivar este estudiante?")) return;
+
+  try{
+    await updateDoc(doc(db,"estudiantes",documento), {
+      activo:false,
+      updatedAt: serverTimestamp()
+    });
+    setMsg(msgForm, `✅ Estudiante desactivado: ${documento}`, "ok");
+    await refrescarListado();
+  }catch(e){
+    console.error(e);
+    setMsg(msgForm,"❌ No se pudo desactivar. Revisa permisos/reglas.","err");
+  }
+});
+
+/* =========================
+   CSV import
+   ========================= */
+function downloadText(filename, text){
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -98,397 +278,250 @@ function downloadFile(filename, content, mime="text/csv;charset=utf-8"){
   URL.revokeObjectURL(url);
 }
 
-/* CSV simple (coma o ;) */
+btnPlantilla.addEventListener("click", () => {
+  const sample =
+`tipoDoc,documento,nombres,apellidos,grado,curso,jornada,edad,correo,telefono,direccion,nacimiento
+TI,120012121,JULIAN,VEGA,11,11A,Mañana,16,acudiente@gmail.com,3110000000,Barrio X,2008-01-15
+`;
+  downloadText("plantilla_estudiantes.csv", sample);
+});
+
 function parseCSV(text){
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  if(!lines.length) return { headers: [], rows: [] };
+  const sep = text.includes(";") && !text.includes(",") ? ";" : (text.includes(";") ? ";" : ",");
+  const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(lines.length < 2) return { headers: [], rows: [] };
 
-  const sep = lines[0].includes(";") ? ";" : ",";
-  const headers = lines[0].split(sep).map(h => h.trim());
-
+  const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase());
   const rows = [];
-  for(let i=1; i<lines.length; i++){
-    const cols = lines[i].split(sep).map(c => c.trim());
+  for(let i=1;i<lines.length;i++){
+    const cols = lines[i].split(sep).map(c=>c.trim());
     const obj = {};
-    headers.forEach((h, idx) => obj[h] = (cols[idx] ?? "").trim());
+    headers.forEach((h,idx)=> obj[h] = cols[idx] ?? "");
     rows.push(obj);
   }
   return { headers, rows };
 }
 
-/* =========================
-   Cargar config/general
-   ========================= */
-async function loadConfigGeneral(){
+btnImportar.addEventListener("click", async () => {
   try{
-    const snap = await getDoc(doc(db, "config", "general"));
-    if(snap.exists()){
-      const data = snap.data();
-      if(data?.institucion) configGeneral.institucion = data.institucion;
+    setMsg(msgCSV,"","");
+    const file = csvFile?.files?.[0];
+    if(!file) return setMsg(msgCSV,"Selecciona un CSV primero.","warn");
 
-      // soporta ambos nombres (por si quedó alguno mal escrito)
-      if(data?.["añoLectivoActual"] != null) configGeneral.anio = Number(data["añoLectivoActual"]) || configGeneral.anio;
-      if(data?.["añoLectvoActual"] != null) configGeneral.anio = Number(data["añoLectvoActual"]) || configGeneral.anio;
-    }
-  }catch(e){}
-  if(instNameEl) instNameEl.textContent = configGeneral.institucion;
-  if(anioEl) anioEl.textContent = String(configGeneral.anio);
-}
+    const text = await file.text();
+    const { rows } = parseCSV(text);
+    if(rows.length === 0) return setMsg(msgCSV,"El CSV no tiene filas de datos.","warn");
 
-/* =========================
-   Auth guard + permiso
-   ========================= */
-async function loadUserProfile(uid){
-  const snap = await getDoc(doc(db, "usuarios", uid));
-  if(!snap.exists()) return null;
-  return snap.data();
-}
+    const batch = writeBatch(db);
+    let ok=0, skip=0;
 
-function requireSecretariaOrSoporte(profile){
-  const r = normRole(profile?.rol);
-  return (r === "secretaria" || r === "soporte");
-}
+    rows.forEach(r=>{
+      const documento = String(r.documento||"").trim();
+      const nombres = sanitizeUpper(r.nombres);
+      const apellidos = sanitizeUpper(r.apellidos);
+      const grado = Number(String(r.grado||"").trim());
+      const curso = String(r.curso||"").trim().toUpperCase();
 
-/* =========================
-   Cursos
-   ========================= */
-async function loadCursos(){
-  selCurso.innerHTML = "";
-  cursosCache = [];
+      if(!documento || !nombres || !apellidos || isNaN(grado) || !curso){
+        skip++; return;
+      }
 
-  const opt0 = document.createElement("option");
-  opt0.value = "";
-  opt0.textContent = "— Selecciona —";
-  selCurso.appendChild(opt0);
-
-  const qy = query(collection(db, "cursos"), where("añoLectivo", "==", configGeneral.anio));
-  const snap = await getDocs(qy);
-
-  snap.forEach(d => {
-    const data = d.data();
-    cursosCache.push({
-      id: d.id,
-      nombre: data?.nombre || d.id,
-      jornada: data?.jornada || "",
-      grado: data?.grado ?? ""
-    });
-  });
-
-  cursosCache.sort((a,b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
-
-  for(const c of cursosCache){
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = `${c.nombre}${c.jornada ? " — " + c.jornada : ""}`;
-    selCurso.appendChild(opt);
-  }
-}
-
-function updateCursoInfo(){
-  const id = selCurso.value;
-  const found = cursosCache.find(c => c.id === id);
-  if(!found){
-    cursoInfo.value = "";
-    return;
-  }
-  cursoInfo.value = `Curso: ${found.nombre} | Jornada: ${found.jornada || "—"} | Grado: ${found.grado ?? "—"}`;
-}
-
-/* =========================
-   Leer matriculados
-   ========================= */
-async function loadMatriculados(cursoId){
-  // matriculas: { anioLectivo, cursoId, estudianteId, activo }
-  const qMat = query(
-    collection(db, "matriculas"),
-    where("anioLectivo", "==", configGeneral.anio),
-    where("cursoId", "==", cursoId),
-    where("activo", "==", true)
-  );
-
-  const matSnap = await getDocs(qMat);
-  const ids = [];
-  matSnap.forEach(d => {
-    const m = d.data();
-    if(m?.estudianteId) ids.push(m.estudianteId);
-  });
-
-  // cargar estudiantes
-  const students = await Promise.all(
-    ids.map(async (sid) => {
-      const sSnap = await getDoc(doc(db, "estudiantes", sid));
-      if(!sSnap.exists()) return null;
-      const s = sSnap.data();
-      return {
-        id: sid,
-        tipoDoc: s?.tipoDoc || "",
-        numDoc: s?.numDoc || sid,
-        nombre: s?.nombre || "(Sin nombre)",
-        edad: s?.edad ?? "",
-        obs: s?.obs || "",
-        activo: s?.activo === true
+      const payload = {
+        tipoDoc: String(r.tipodoc || r.tipoDoc || "TI").trim() || "TI",
+        documento,
+        nombres,
+        apellidos,
+        grado,
+        curso,
+        jornada: String(r.jornada||"Mañana").trim() || "Mañana",
+        edad: r.edad ? Number(r.edad) : null,
+        correo: String(r.correo||"").trim(),
+        telefono: String(r.telefono||"").trim(),
+        direccion: String(r.direccion||"").trim(),
+        nacimiento: String(r.nacimiento||"").trim(),
+        activo: true,
+        añoLectivo: Number(CFG.añoLectivo || 0),
+        updatedAt: serverTimestamp()
       };
-    })
-  );
 
-  return students.filter(Boolean).sort((a,b) => String(a.nombre).localeCompare(String(b.nombre), "es"));
-}
-
-function renderTable(list){
-  if(!list.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">No hay estudiantes matriculados en este curso (para el año ${configGeneral.anio}).</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = list.map((s, i) => `
-    <tr>
-      <td>${i+1}</td>
-      <td><b>${s.nombre}</b></td>
-      <td>${(s.tipoDoc || "")} ${s.numDoc || ""}</td>
-      <td>${s.edad ?? ""}</td>
-      <td>${s.activo ? '<span class="badge">Sí</span>' : '<span class="badge">No</span>'}</td>
-      <td>${s.obs || ""}</td>
-    </tr>
-  `).join("");
-}
-
-/* =========================
-   Guardar estudiante + matrícula
-   ========================= */
-async function upsertEstudianteAndMatricula({
-  tipoDocVal,
-  numDocVal,
-  nombreVal,
-  edadVal,
-  obsVal,
-  activoVal,
-  cursoId
-}){
-  const estudianteId = String(numDocVal).trim(); // ID fijo: documento
-  if(!estudianteId) throw new Error("Documento vacío");
-  if(!cursoId) throw new Error("No hay curso seleccionado");
-
-  const estudianteData = {
-    tipoDoc: (tipoDocVal || "").trim(),
-    numDoc: estudianteId,
-    nombre: (nombreVal || "").trim(),
-    edad: (edadVal === "" || edadVal == null) ? null : Number(edadVal),
-    obs: (obsVal || "").trim(),
-    activo: activoVal === true
-  };
-
-  // estudiantes/{numDoc}
-  await setDoc(doc(db, "estudiantes", estudianteId), estudianteData, { merge: true });
-
-  // matriculas/{anio-curso-estudiante}
-  const matriculaId = `${configGeneral.anio}-${cursoId}-${estudianteId}`;
-  const matriculaData = {
-    anioLectivo: configGeneral.anio,
-    cursoId,
-    estudianteId,
-    activo: true,
-    updatedAt: Date.now()
-  };
-  await setDoc(doc(db, "matriculas", matriculaId), matriculaData, { merge: true });
-
-  return estudianteId;
-}
-
-/* =========================
-   Eventos
-   ========================= */
-btnBack?.addEventListener("click", () => window.location.href = "app.html");
-btnReload?.addEventListener("click", async () => {
-  setMsg("Recargando cursos...", true);
-  await loadCursos();
-  updateCursoInfo();
-  setMsg("Cursos listos.", true);
-});
-
-selCurso?.addEventListener("change", () => updateCursoInfo());
-
-btnCargar?.addEventListener("click", async () => {
-  const cursoId = selCurso.value;
-  if(!cursoId){
-    setMsg("Selecciona un curso.", false);
-    return;
-  }
-  setMsg("Cargando estudiantes matriculados...", true);
-  try{
-    const list = await loadMatriculados(cursoId);
-    renderTable(list);
-    setMsg(`Listo. Matriculados en ${cursoId}: ${list.length}`, true);
-  }catch(e){
-    console.error(e);
-    setMsg("No se pudo cargar. Revisa conexión o permisos.", false);
-  }
-});
-
-btnGuardarUno?.addEventListener("click", async () => {
-  const cursoId = selCurso.value;
-  if(!cursoId){
-    setMsg("Selecciona un curso antes de guardar.", false);
-    return;
-  }
-
-  const num = (numDoc.value || "").trim();
-  const nom = (nombre.value || "").trim();
-
-  if(!num || !nom){
-    setMsg("Documento y nombre son obligatorios.", false);
-    return;
-  }
-
-  setMsg("Guardando estudiante y matrícula...", true);
-
-  try{
-    await upsertEstudianteAndMatricula({
-      tipoDocVal: tipoDoc.value,
-      numDocVal: num,
-      nombreVal: nom,
-      edadVal: (edad.value || "").trim(),
-      obsVal: (obs.value || "").trim(),
-      activoVal: (activoEst.value === "true"),
-      cursoId
+      batch.set(doc(db,"estudiantes",documento), payload, { merge:true });
+      ok++;
     });
 
-    // limpiar
-    // (dejamos tipoDoc y activo como están)
-    numDoc.value = "";
-    nombre.value = "";
-    edad.value = "";
-    obs.value = "";
+    if(ok === 0) return setMsg(msgCSV,"No hubo filas válidas. Revisa columnas: documento,nombres,apellidos,grado,curso","warn");
 
-    // refrescar tabla
-    const list = await loadMatriculados(cursoId);
-    renderTable(list);
+    await batch.commit();
+    setMsg(msgCSV, `✅ Importación lista. Guardados/actualizados: ${ok}. Omitidos: ${skip}.`, "ok");
 
-    setMsg("Guardado y matriculado correctamente.", true);
+    await refrescarListado();
   }catch(e){
     console.error(e);
-    setMsg("Error guardando. Verifica datos o permisos.", false);
-  }
-});
-
-btnPlantillaCsv?.addEventListener("click", () => {
-  const csv = [
-    "tipoDoc,numDoc,nombre,edad,obs,activo",
-    "TI,12345,María López,9,,true",
-    "TI,67890,Carlos Ruiz,10,Acudiente: Ana,true"
-  ].join("\n");
-  downloadFile("plantilla_estudiantes.csv", csv);
-});
-
-btnImportar?.addEventListener("click", async () => {
-  const cursoId = selCurso.value;
-  if(!cursoId){
-    setMsg("Selecciona un curso antes de importar.", false);
-    return;
-  }
-  const f = fileCsv.files?.[0];
-  if(!f){
-    setMsg("Selecciona un archivo CSV.", false);
-    return;
-  }
-
-  setMsg("Leyendo CSV...", true);
-
-  try{
-    const text = await f.text();
-    const { headers, rows } = parseCSV(text);
-
-    const needed = ["tipodoc","numdoc","nombre","edad","obs","activo"];
-    const headersNorm = headers.map(h => h.toLowerCase());
-    for(const n of needed){
-      if(!headersNorm.includes(n)){
-        setMsg(`Falta columna "${n}" en el CSV. Descarga la plantilla y usa ese formato.`, false);
-        return;
-      }
-    }
-
-    let okCount = 0;
-    let failCount = 0;
-
-    for(const r of rows){
-      const tipoDocVal = (r.tipoDoc || r.TIPODOC || r.tipodoc || "").trim();
-      const numDocVal = (r.numDoc || r.NUMDOC || r.numdoc || "").trim();
-      const nombreVal = (r.nombre || r.NOMBRE || "").trim();
-      const edadVal = (r.edad || r.EDAD || "").trim();
-      const obsVal = (r.obs || r.OBS || "").trim();
-      const activoRaw = (r.activo || r.ACTIVO || "true").toString().trim().toLowerCase();
-      const activoVal = (activoRaw === "true" || activoRaw === "1" || activoRaw === "si" || activoRaw === "sí");
-
-      if(!numDocVal || !nombreVal){
-        failCount++;
-        continue;
-      }
-
-      try{
-        await upsertEstudianteAndMatricula({
-          tipoDocVal,
-          numDocVal,
-          nombreVal,
-          edadVal,
-          obsVal,
-          activoVal,
-          cursoId
-        });
-        okCount++;
-      }catch(e){
-        failCount++;
-      }
-    }
-
-    // refrescar tabla
-    const list = await loadMatriculados(cursoId);
-    renderTable(list);
-
-    setMsg(`Importación finalizada. OK: ${okCount} · Fallas: ${failCount}`, failCount === 0);
-  }catch(e){
-    console.error(e);
-    setMsg("No se pudo importar. Verifica el archivo CSV.", false);
+    setMsg(msgCSV,"❌ Error importando CSV. Revisa consola/permisos/reglas.","err");
   }
 });
 
 /* =========================
-   Inicio
+   Listado
+   ========================= */
+let allStudents = [];
+
+function renderList(){
+  const cursoFilter = String(fCurso.value||"").trim();
+  const qtxt = String(fBuscar.value||"").trim().toUpperCase();
+
+  let list = [...allStudents];
+
+  if(cursoFilter){
+    list = list.filter(s => String(s.curso||"") === cursoFilter);
+  }
+  if(qtxt){
+    list = list.filter(s => {
+      const name = `${s.apellidos||""} ${s.nombres||""}`.toUpperCase();
+      return String(s.documento||"").includes(qtxt) || name.includes(qtxt);
+    });
+  }
+
+  totalEstEl.textContent = String(list.length);
+
+  if(list.length === 0){
+    listado.innerHTML = "";
+    setMsg(msgList,"No hay resultados con ese filtro.","warn");
+    return;
+  }
+
+  setMsg(msgList,"","");
+
+  // Render como "mini-cards" usando panel
+  listado.innerHTML = "";
+  list.slice(0, 200).forEach(s=>{
+    const div = document.createElement("div");
+    div.className = "panel";
+    div.style.marginBottom = "10px";
+
+    const name = `${s.apellidos||""} ${s.nombres||""}`.trim();
+
+    div.innerHTML = `
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <h2 style="margin:0; font-size:14px;">${name || "(Sin nombre)"} <span class="small">• ${s.documento}</span></h2>
+          <p class="small">Curso: <b>${s.curso||"—"}</b> • Grado: <b>${s.grado??"—"}</b> • Jornada: <b>${s.jornada||"—"}</b> • Activo: <b>${s.activo===false ? "NO" : "SI"}</b></p>
+        </div>
+        <div class="btns">
+          <button class="btn-ghost" data-edit="${s.documento}">Editar</button>
+        </div>
+      </div>
+    `;
+
+    div.querySelector(`[data-edit="${CSS.escape(s.documento)}"]`).addEventListener("click", ()=>{
+      // cargar en form
+      stTipoDoc.value = s.tipoDoc || "TI";
+      stDocumento.value = s.documento || "";
+      stNombres.value = s.nombres || "";
+      stApellidos.value = s.apellidos || "";
+      stGrado.value = String(s.grado ?? "");
+      refreshCursosSelects();
+      stCurso.value = s.curso || "";
+      stJornada.value = s.jornada || "Mañana";
+      stNacimiento.value = s.nacimiento || "";
+      stEdad.value = s.edad ?? "";
+      stCorreo.value = s.correo || "";
+      stTelefono.value = s.telefono || "";
+      stDireccion.value = s.direccion || "";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setMsg(msgForm, "Editando estudiante. Ajusta y pulsa Guardar.", "ok");
+    });
+
+    listado.appendChild(div);
+  });
+
+  if(allStudents.length > 200){
+    setMsg(msgList, "Mostrando solo los primeros 200 resultados. Usa filtros para encontrar más rápido.", "warn");
+  }
+}
+
+async function refrescarListado(){
+  try{
+    setMsg(msgList,"Cargando…","warn");
+
+    // Traemos todos (para colegios no suele ser exagerado). Si crece demasiado, lo paginamos luego.
+    const snap = await getDocs(collection(db,"estudiantes"));
+    allStudents = [];
+    snap.forEach(d=>{
+      const x = d.data();
+      allStudents.push({
+        documento: x.documento || d.id,
+        tipoDoc: x.tipoDoc || "TI",
+        nombres: x.nombres || "",
+        apellidos: x.apellidos || "",
+        grado: x.grado,
+        curso: x.curso,
+        jornada: x.jornada,
+        edad: x.edad ?? null,
+        nacimiento: x.nacimiento || "",
+        correo: x.correo || "",
+        telefono: x.telefono || "",
+        direccion: x.direccion || "",
+        activo: x.activo !== false
+      });
+    });
+
+    // ordenar
+    allStudents.sort((a,b)=> (String(a.apellidos)+String(a.nombres)).localeCompare(String(b.apellidos)+String(b.nombres)));
+
+    setMsg(msgList,"","");
+
+    renderList();
+  }catch(e){
+    console.error(e);
+    setMsg(msgList,"❌ Error cargando listado. Revisa permisos/reglas.","err");
+  }
+}
+
+btnRefrescar.addEventListener("click", refrescarListado);
+fCurso.addEventListener("change", renderList);
+fBuscar.addEventListener("input", renderList);
+
+/* =========================
+   Auth guard
    ========================= */
 onAuthStateChanged(auth, async (user) => {
-  if(!user){
-    window.location.href = "index.html";
-    return;
+  if(!user) return (window.location.href="index.html");
+
+  try{
+    await loadConfig();
+
+    PROFILE = await loadProfile(user.uid);
+    if(!PROFILE){
+      alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+      await signOut(auth);
+      return (window.location.href="index.html");
+    }
+    if(PROFILE.activo !== true){
+      alert("Usuario inactivo.");
+      await signOut(auth);
+      return (window.location.href="index.html");
+    }
+
+    const role = normalizeRole(PROFILE.rol);
+    const okRole = ["secretaria","soporte","rector","rectora","coordinador","coordinador academico","coordinador académico"].includes(role);
+    if(!okRole){
+      alert("No tienes permisos para el módulo Secretaría.");
+      window.location.href = "app.html";
+      return;
+    }
+
+    secNameEl.textContent = PROFILE.nombre || "(Sin nombre)";
+
+    await loadCursos();
+
+    // inicializa selects
+    if(stGrado.options.length) stGrado.selectedIndex = 0;
+    refreshCursosSelects();
+
+    await refrescarListado();
+    limpiar();
+  }catch(e){
+    console.error(e);
+    setMsg(msgList,"Error inicializando. Revisa consola.","err");
   }
-
-  currentUser = user;
-
-  await loadConfigGeneral();
-
-  const profile = await loadUserProfile(user.uid);
-  currentProfile = profile;
-
-  if(!profile){
-    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
-    await signOut(auth);
-    window.location.href = "index.html";
-    return;
-  }
-
-  if(profile.activo !== true){
-    alert("Usuario inactivo. Contacta a soporte.");
-    await signOut(auth);
-    window.location.href = "index.html";
-    return;
-  }
-
-  if(!requireSecretariaOrSoporte(profile)){
-    alert("No tienes permisos para Secretaría. Contacta a soporte.");
-    window.location.href = "app.html";
-    return;
-  }
-
-  // cargar cursos al entrar
-  setMsg("Cargando cursos...", true);
-  await loadCursos();
-  updateCursoInfo();
-  setMsg("Listo. Selecciona un curso y carga matriculados.", true);
 });

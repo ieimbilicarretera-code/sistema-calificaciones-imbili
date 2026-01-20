@@ -1,257 +1,59 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Panel • IE Imbilí Carretera</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IE Imbilí Carretera • Panel</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="wrap">
     <div class="shell">
 
-      <div class="topbar">
-        <div class="brand">
-          <img src="logo.png" class="logo" alt="Logo IE"/>
-          <div style="min-width:0">
+      <div class="card">
+        <div class="header">
+          <div class="logo"><img src="assets/logo.png" alt="Logo IE"></div>
+
+          <div class="hgroup">
             <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-            <p>Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">...</b></p>
+            <p>Bienvenido(a): <b id="userName">---</b> — Rol: <b id="userRole">---</b></p>
+          </div>
+
+          <div class="chips">
+            <div class="chip">Año lectivo: <b id="anioLectivo">…</b></div>
+            <div class="chip">Períodos: <b id="periodos">…</b></div>
           </div>
         </div>
-        <div class="chips">
-          <div class="chip">Año lectivo: <b id="anioLectivo">...</b></div>
-          <div class="chip">Períodos: <b id="periodos">...</b></div>
+
+        <div class="content">
+
+          <div class="panel">
+            <div class="row" style="justify-content:space-between;">
+              <div>
+                <h2>Panel principal</h2>
+                <p>Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.</p>
+              </div>
+              <div class="btns">
+                <button class="btn-danger" id="btnLogout">Cerrar sesión</button>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <h2 style="margin-top:0">Módulos</h2>
+            <div class="modules" id="modulesGrid"></div>
+
+            <div class="msg" id="appMsg"></div>
+          </div>
+
+        </div>
+
+        <div class="footer">
+          <span>© <span id="year"></span> IE Imbilí Carretera</span>
+          <span class="small">Consejo: si un módulo no aparece, es por permisos/rol.</span>
         </div>
       </div>
 
-      <div class="content">
-        <!-- MENU -->
-        <section id="viewMenu" class="view active">
-          <div class="card">
-            <div class="row" style="justify-content:space-between;">
-              <div>
-                <h3 style="margin:0 0 6px 0;">Panel principal</h3>
-                <div style="color:var(--muted); font-size:13px;">
-                  Selecciona un módulo para continuar. Los módulos visibles dependen del rol/permisos.
-                </div>
-              </div>
-              <button id="btnLogout" class="btn danger">Cerrar sesión</button>
-            </div>
-            <div class="hr"></div>
-            <div style="color:var(--muted); font-size:12.5px; text-align:center;">
-              Consejo: si un módulo no aparece, es por permisos/rol.
-            </div>
-          </div>
-
-          <div class="card" style="margin-top:12px;">
-            <h3 style="margin:0 0 10px 0;">Módulos</h3>
-            <div id="modulesGrid" class="modules"></div>
-          </div>
-        </section>
-
-        <!-- SECRETARIA -->
-        <section id="viewSecretaria" class="view">
-          <div class="card">
-            <div class="row" style="justify-content:space-between;">
-              <div>
-                <h3 style="margin:0;">Secretaría • Estudiantes</h3>
-                <div style="color:var(--muted); font-size:13px;">Registrar estudiantes (individual o carga masiva CSV).</div>
-              </div>
-              <button class="btn" data-back>Volver</button>
-            </div>
-
-            <div class="hr"></div>
-
-            <h4 style="margin:0 0 10px 0;">Registro individual</h4>
-            <div class="grid2">
-              <div>
-                <div class="label">Tipo doc *</div>
-                <select id="stTipoDoc">
-                  <option>TI</option><option>CC</option><option>RC</option><option>CE</option><option>PA</option>
-                </select>
-              </div>
-              <div>
-                <div class="label">Documento *</div>
-                <input id="stDocumento" class="input" placeholder="Ej: 1087..." />
-              </div>
-
-              <div>
-                <div class="label">Nombres *</div>
-                <input id="stNombres" class="input" placeholder="Ej: JUAN" />
-              </div>
-              <div>
-                <div class="label">Apellidos *</div>
-                <input id="stApellidos" class="input" placeholder="Ej: PEREZ" />
-              </div>
-
-              <div>
-                <div class="label">Grado *</div>
-                <input id="stGrado" class="input" placeholder="Ej: 11" />
-              </div>
-              <div>
-                <div class="label">Curso *</div>
-                <input id="stCurso" class="input" placeholder="Ej: 11A" />
-              </div>
-
-              <div>
-                <div class="label">Jornada</div>
-                <select id="stJornada">
-                  <option>Mañana</option><option>Tarde</option><option>Noche</option><option>Única</option>
-                </select>
-              </div>
-              <div>
-                <div class="label">Edad</div>
-                <input id="stEdad" type="number" class="input" placeholder="Ej: 15" />
-              </div>
-
-              <div>
-                <div class="label">Correo</div>
-                <input id="stCorreo" class="input" placeholder="acudiente@correo.com" />
-              </div>
-              <div>
-                <div class="label">Teléfono</div>
-                <input id="stTelefono" class="input" placeholder="3xx..." />
-              </div>
-
-              <div style="grid-column:1/-1;">
-                <div class="label">Dirección</div>
-                <input id="stDireccion" class="input" placeholder="Barrio / vereda..." />
-              </div>
-            </div>
-
-            <div class="row" style="margin-top:12px;">
-              <button id="btnGuardarEstudiante" class="btn primary">Guardar estudiante</button>
-              <button id="btnLimpiarEstudiante" class="btn">Limpiar</button>
-            </div>
-            <div id="msgSecretaria1" class="msg"></div>
-
-            <div class="hr"></div>
-
-            <h4 style="margin:0 0 10px 0;">Carga masiva (CSV)</h4>
-            <div class="row">
-              <input id="csvFile" type="file" accept=".csv" class="input" style="max-width:360px;">
-              <button id="btnImportarCSV" class="btn primary">Importar CSV</button>
-              <button id="btnDescargarPlantillaCSV" class="btn">Descargar plantilla</button>
-            </div>
-            <div id="msgSecretaria2" class="msg"></div>
-          </div>
-        </section>
-
-        <!-- DOCENTE -->
-        <section id="viewDocente" class="view">
-          <div class="card">
-            <div class="row" style="justify-content:space-between;">
-              <div>
-                <h3 style="margin:0;">Docente • Registro de notas</h3>
-                <div style="color:var(--muted); font-size:13px;">
-                  Elige curso, período y materia. Registra actividades (nota + observación) y mira la definitiva en tiempo real.
-                </div>
-              </div>
-              <button class="btn" data-back>Volver</button>
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="grid2">
-              <div>
-                <div class="label">Curso *</div>
-                <select id="dcCurso"></select>
-              </div>
-              <div>
-                <div class="label">Período *</div>
-                <select id="dcPeriodo">
-                  <option value="1">1</option><option value="2">2</option>
-                  <option value="3">3</option><option value="4">4</option>
-                </select>
-              </div>
-              <div style="grid-column:1/-1;">
-                <div class="label">Materia *</div>
-                <select id="dcMateria">
-                  <option value="">Selecciona un curso primero...</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row" style="margin-top:12px;">
-              <button id="dcBtnLoad" class="btn primary">Cargar estudiantes</button>
-              <button id="dcBtnSave" class="btn">Guardar notas</button>
-              <button id="dcBtnAddAct" class="btn">+ Agregar actividad</button>
-            </div>
-
-            <div id="dcMsg" class="msg"></div>
-
-            <div style="margin-top:10px; color:var(--muted); font-size:12.8px;">
-              Actividades: cada estudiante tendrá varias actividades (nota + observación). La definitiva se calcula como el promedio de notas diligenciadas.
-            </div>
-
-            <div id="dcTableWrap" class="tableWrap" style="display:none;"></div>
-          </div>
-        </section>
-
-        <!-- SOPORTE -->
-        <section id="viewSoporte" class="view">
-          <div class="card">
-            <div class="row" style="justify-content:space-between;">
-              <div>
-                <h3 style="margin:0;">Soporte • Configuración</h3>
-                <div style="color:var(--muted); font-size:13px;">
-                  Crear cursos/grupos y materias sin entrar a Firebase.
-                </div>
-              </div>
-              <button class="btn" data-back>Volver</button>
-            </div>
-
-            <div class="hr"></div>
-
-            <h4 style="margin:0 0 10px 0;">Crear curso (ej: 11A, 0A, 1A)</h4>
-            <div class="grid2">
-              <div>
-                <div class="label">ID Curso *</div>
-                <input id="spCursoId" class="input" placeholder="Ej: 11A" />
-              </div>
-              <div>
-                <div class="label">Grado *</div>
-                <input id="spCursoGrado" class="input" placeholder="Ej: 11" />
-              </div>
-              <div>
-                <div class="label">Jornada</div>
-                <select id="spCursoJornada">
-                  <option>Mañana</option><option>Tarde</option><option>Noche</option><option>Única</option>
-                </select>
-              </div>
-              <div>
-                <div class="label">Año lectivo</div>
-                <input id="spCursoAnio" class="input" placeholder="Ej: 2025" />
-              </div>
-            </div>
-            <div class="row" style="margin-top:12px;">
-              <button id="spCrearCurso" class="btn primary">Guardar curso</button>
-            </div>
-            <div id="spMsgCurso" class="msg"></div>
-
-            <div class="hr"></div>
-
-            <h4 style="margin:0 0 10px 0;">Crear materia (para un grado)</h4>
-            <div class="grid2">
-              <div>
-                <div class="label">Grado *</div>
-                <input id="spMatGrado" class="input" placeholder="Ej: 11" />
-              </div>
-              <div>
-                <div class="label">Nombre materia *</div>
-                <input id="spMatNombre" class="input" placeholder="Ej: Matemáticas" />
-              </div>
-            </div>
-            <div class="row" style="margin-top:12px;">
-              <button id="spCrearMateria" class="btn primary">Crear materia</button>
-            </div>
-            <div id="spMsgMateria" class="msg"></div>
-          </div>
-        </section>
-
-      </div>
-
-      <div class="footer">© 2026 IE Imbilí Carretera</div>
     </div>
   </div>
 

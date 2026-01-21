@@ -294,3 +294,43 @@ button{
 .activity-name{font-weight:750; font-size:13px}
 .small{font-size:12px;color:var(--muted)}
 .note-input{max-width:120px}
+
+/* ====== SOPORTE UI (pegar al final de styles.css) ====== */
+.tabs{ display:flex; gap:10px; margin:16px 0; flex-wrap:wrap; }
+.tab{
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color:#fff;
+  padding:10px 14px;
+  border-radius:12px;
+  cursor:pointer;
+}
+.tab.active{
+  background: rgba(59,130,246,.22);
+  border-color: rgba(59,130,246,.35);
+}
+.tabview{ display:none; margin-top:12px; }
+.tabview.active{ display:block; }
+
+.grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+@media(max-width:900px){ .grid2{ grid-template-columns:1fr; } }
+
+.field label{ display:block; font-size:12px; opacity:.85; margin-bottom:6px; }
+.field input, .field select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background: rgba(0,0,0,.20);
+  color:#fff;
+}
+.row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+
+.tablewrap{ margin-top:14px; overflow:auto; border-radius:14px; border:1px solid rgba(255,255,255,.12); }
+.table{ width:100%; border-collapse:collapse; min-width:720px; }
+.table th, .table td{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); }
+.table th{ text-align:left; font-size:12px; opacity:.85; }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; }
+
+.pill.small{ padding:4px 10px; border-radius:999px; font-size:12px; display:inline-block; }
+.btn.small{ padding:8px 10px; border-radius:12px; font-size:12px; }

@@ -1,13 +1,29 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
 import {
   getFirestore,
-  doc, getDoc, setDoc,
-  collection, getDocs,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  addDoc,
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocs,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* Firebase config */
+/* =========================
+   Firebase config (calificaciones-imbili)
+   ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBpcM4OGMnyJZT7r_6XYldAJAyLpajP33I",
   authDomain: "calificaciones-imbili.firebaseapp.com",
@@ -21,254 +37,354 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-document.getElementById("year").textContent = new Date().getFullYear();
+/* =========================
+   UI refs
+   ========================= */
+const yearEl = document.getElementById("year");
+yearEl.textContent = new Date().getFullYear();
 
 const instNameEl = document.getElementById("instName");
-const supNameEl = document.getElementById("supName");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
 const anioEl = document.getElementById("anioLectivo");
 const periodosEl = document.getElementById("periodos");
-document.getElementById("btnBack").addEventListener("click", ()=> window.location.href="app.html");
+const btnLogout = document.getElementById("btnLogout");
 
-/* Curso form */
-const cuNombre = document.getElementById("cuNombre");
-const cuGrado = document.getElementById("cuGrado");
-const cuJornada = document.getElementById("cuJornada");
-const cuActivo = document.getElementById("cuActivo");
-const btnSaveCurso = document.getElementById("btnSaveCurso");
-const btnClearCurso = document.getElementById("btnClearCurso");
-const msgCurso = document.getElementById("msgCurso");
-
-/* Materia form */
-const maNombre = document.getElementById("maNombre");
-const maGrado = document.getElementById("maGrado");
-const maActiva = document.getElementById("maActiva");
-const btnSaveMateria = document.getElementById("btnSaveMateria");
-const btnClearMateria = document.getElementById("btnClearMateria");
-const msgMateria = document.getElementById("msgMateria");
-
-/* Lists */
-const btnReload = document.getElementById("btnReload");
-const listCursos = document.getElementById("listCursos");
-const listMaterias = document.getElementById("listMaterias");
-const msgList = document.getElementById("msgList");
+/* =========================
+   Helpers
+   ========================= */
+function normalizeRole(r){
+  return String(r || "").trim().toLowerCase();
+}
 
 function setMsg(el, text, type=""){
-  el.className = "msg " + (type||"");
-  el.textContent = text || "";
+  if(!el) return;
   el.style.display = text ? "block" : "none";
+  el.className = "msg " + (type || "");
+  el.textContent = text || "";
 }
 
-function normalizeRole(r){ return String(r||"").trim().toLowerCase(); }
-
-let CFG = { añoLectivo: 2025, periodos: 4, institucion: "Institución Educativa Imbilí Carretera" };
-let PROFILE = null;
-
-async function loadConfig(){
-  const snap = await getDoc(doc(db,"config","general"));
-  if(snap.exists()) CFG = { ...CFG, ...snap.data() };
-  instNameEl.textContent = CFG.institucion || "Institución Educativa Imbilí Carretera";
-  anioEl.textContent = String(CFG.añoLectivo ?? "…");
-  periodosEl.textContent = String(CFG.periodos ?? "…");
+async function loadConfigGeneral() {
+  try {
+    const snap = await getDoc(doc(db, "config", "general"));
+    if (snap.exists()) {
+      const cfg = snap.data();
+      if (cfg?.institucion) instNameEl.textContent = cfg.institucion;
+      if (cfg?.añoLectivo != null) anioEl.textContent = String(cfg.añoLectivo);
+      if (cfg?.periodos != null) periodosEl.textContent = String(cfg.periodos);
+    }
+  } catch (e) {}
 }
 
-async function loadProfile(uid){
-  const snap = await getDoc(doc(db,"usuarios",uid));
-  return snap.exists() ? snap.data() : null;
+async function loadUserProfile(uid) {
+  const snap = await getDoc(doc(db, "usuarios", uid));
+  if (!snap.exists()) return null;
+  return snap.data();
 }
 
-/* Guardar curso */
-btnSaveCurso.addEventListener("click", async ()=>{
+/* =========================
+   Tabs
+   ========================= */
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tabview").forEach(v => v.classList.remove("active"));
+
+    btn.classList.add("active");
+    const id = btn.dataset.tab;
+    document.getElementById(`tab-${id}`).classList.add("active");
+  });
+});
+
+/* =========================
+   USUARIOS
+   ========================= */
+const u_uid = document.getElementById("u_uid");
+const u_rol = document.getElementById("u_rol");
+const u_nombre = document.getElementById("u_nombre");
+const u_cedula = document.getElementById("u_cedula");
+const u_correo = document.getElementById("u_correo");
+const u_activo = document.getElementById("u_activo");
+const u_must = document.getElementById("u_must");
+const msgUsuarios = document.getElementById("msgUsuarios");
+
+document.getElementById("btnSaveUser").addEventListener("click", async () => {
   try{
-    setMsg(msgCurso,"","");
+    setMsg(msgUsuarios, "", "");
+    const uid = (u_uid.value || "").trim();
+    if(!uid) return setMsg(msgUsuarios, "❗ Debes pegar el UID del usuario.", "warn");
 
-    const nombre = String(cuNombre.value||"").trim().toUpperCase();
-    const grado = Number(cuGrado.value||"");
-    const jornada = String(cuJornada.value||"Mañana");
-    const activo = (String(cuActivo.value) === "true");
+    const payload = {
+      nombre: (u_nombre.value || "").trim(),
+      cedula: (u_cedula.value || "").trim(),
+      correo: (u_correo.value || "").trim(),
+      rol: (u_rol.value || "").trim(),
+      activo: (u_activo.value === "true"),
+      mustChangePassword: (u_must.value === "true"),
+      updatedAt: serverTimestamp()
+    };
 
-    if(!nombre || isNaN(grado)){
-      return setMsg(msgCurso,"Faltan campos obligatorios (nombre, grado).","warn");
+    if(!payload.nombre || !payload.cedula || !payload.correo || !payload.rol){
+      return setMsg(msgUsuarios, "❗ Faltan campos obligatorios.", "warn");
     }
 
-    await setDoc(doc(db,"cursos", nombre), {
-      nombre,
-      grado,
-      jornada,
-      activo,
-      añoLectivo: Number(CFG.añoLectivo || 0),
-      updatedAt: serverTimestamp()
-    }, { merge:true });
-
-    setMsg(msgCurso, `✅ Curso guardado: ${nombre}`, "ok");
-    await refreshLists();
+    await setDoc(doc(db, "usuarios", uid), payload, { merge:true });
+    setMsg(msgUsuarios, "✅ Perfil guardado/actualizado en Firestore.", "ok");
   }catch(e){
     console.error(e);
-    setMsg(msgCurso,"❌ No se pudo guardar curso. Revisa permisos/reglas.","err");
+    setMsg(msgUsuarios, "❌ No se pudo guardar el perfil. Revisa reglas/permisos.", "err");
   }
 });
 
-btnClearCurso.addEventListener("click", ()=>{
-  cuNombre.value = "";
-  cuGrado.value = "";
-  cuJornada.value = "Mañana";
-  cuActivo.value = "true";
-  setMsg(msgCurso,"","");
+document.getElementById("btnLoadUser").addEventListener("click", async () => {
+  try{
+    setMsg(msgUsuarios, "", "");
+    const uid = (u_uid.value || "").trim();
+    if(!uid) return setMsg(msgUsuarios, "Escribe/pega un UID primero.", "warn");
+
+    const snap = await getDoc(doc(db, "usuarios", uid));
+    if(!snap.exists()){
+      return setMsg(msgUsuarios, "No existe perfil para ese UID.", "warn");
+    }
+    const d = snap.data();
+    u_nombre.value = d.nombre || "";
+    u_cedula.value = d.cedula || "";
+    u_correo.value = d.correo || "";
+    u_rol.value = (d.rol || "docente").toLowerCase();
+    u_activo.value = String(!!d.activo);
+    u_must.value = String(!!d.mustChangePassword);
+
+    setMsg(msgUsuarios, "✅ Perfil cargado.", "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgUsuarios, "❌ Error cargando perfil.", "err");
+  }
 });
 
-/* Guardar materia */
-btnSaveMateria.addEventListener("click", async ()=>{
+/* =========================
+   CURSOS
+   ========================= */
+const c_id = document.getElementById("c_id");
+const c_grado = document.getElementById("c_grado");
+const c_jornada = document.getElementById("c_jornada");
+const c_anio = document.getElementById("c_anio");
+const c_diruid = document.getElementById("c_diruid");
+const msgCursos = document.getElementById("msgCursos");
+const tblCursosBody = document.querySelector("#tblCursos tbody");
+
+document.getElementById("btnSaveCurso").addEventListener("click", async () => {
   try{
-    setMsg(msgMateria,"","");
+    setMsg(msgCursos, "", "");
+    const id = (c_id.value || "").trim().toUpperCase();
+    const grado = Number(c_grado.value);
+    if(!id || Number.isNaN(grado)) return setMsg(msgCursos, "❗ Curso y grado son obligatorios.", "warn");
 
-    const nombre = String(maNombre.value||"").trim();
-    const grado = Number(maGrado.value||"");
-    const activa = (String(maActiva.value) === "true");
+    const payload = {
+      nombre: id,
+      grado,
+      jornada: (c_jornada.value || "Mañana"),
+      añoLectivo: c_anio.value ? Number(c_anio.value) : null,
+      directorUid: (c_diruid.value || "").trim(),
+      updatedAt: serverTimestamp()
+    };
 
-    if(!nombre || isNaN(grado)){
-      return setMsg(msgMateria,"Faltan campos obligatorios (nombre, grado).","warn");
+    await setDoc(doc(db, "cursos", id), payload, { merge:true });
+    setMsg(msgCursos, `✅ Curso guardado: ${id}`, "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgCursos, "❌ No se pudo guardar el curso.", "err");
+  }
+});
+
+document.getElementById("btnListCursos").addEventListener("click", async () => {
+  try{
+    setMsg(msgCursos, "", "");
+    tblCursosBody.innerHTML = "";
+    const qy = query(collection(db, "cursos"), orderBy("grado", "asc"), limit(200));
+    const snap = await getDocs(qy);
+
+    snap.forEach(docu => {
+      const d = docu.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${d.nombre || docu.id}</td>
+        <td>${d.grado ?? ""}</td>
+        <td>${d.jornada ?? ""}</td>
+        <td>${d.añoLectivo ?? ""}</td>
+        <td>${d.directorUid ?? ""}</td>
+      `;
+      tblCursosBody.appendChild(tr);
+    });
+
+    setMsg(msgCursos, `✅ Cursos cargados: ${snap.size}`, "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgCursos, "❌ Error cargando cursos.", "err");
+  }
+});
+
+/* =========================
+   MATERIAS
+   ========================= */
+const m_id = document.getElementById("m_id");
+const m_grado = document.getElementById("m_grado");
+const m_nombre = document.getElementById("m_nombre");
+const m_activa = document.getElementById("m_activa");
+const msgMaterias = document.getElementById("msgMaterias");
+const tblMateriasBody = document.querySelector("#tblMaterias tbody");
+
+document.getElementById("btnSaveMateria").addEventListener("click", async () => {
+  try{
+    setMsg(msgMaterias, "", "");
+    const grado = Number(m_grado.value);
+    const nombre = (m_nombre.value || "").trim();
+    const activa = (m_activa.value === "true");
+
+    if(Number.isNaN(grado) || !nombre){
+      return setMsg(msgMaterias, "❗ Grado y nombre son obligatorios.", "warn");
     }
 
-    // ID = nombre + grado (para evitar duplicados). Ej: "11_MATEMATICAS"
-    const id = `${grado}_${nombre}`.toUpperCase().replace(/\s+/g,"_");
-
-    await setDoc(doc(db,"materias", id), {
-      nombre,
+    const payload = {
       grado,
+      nombre,
       activa,
       updatedAt: serverTimestamp()
-    }, { merge:true });
+    };
 
-    setMsg(msgMateria, `✅ Materia guardada: ${nombre} (grado ${grado})`, "ok");
-    await refreshLists();
+    const id = (m_id.value || "").trim();
+    if(id){
+      await setDoc(doc(db, "materias", id), payload, { merge:true });
+      setMsg(msgMaterias, `✅ Materia guardada (ID fijo): ${id}`, "ok");
+    }else{
+      const ref = await addDoc(collection(db, "materias"), payload);
+      setMsg(msgMaterias, `✅ Materia creada (ID): ${ref.id}`, "ok");
+    }
   }catch(e){
     console.error(e);
-    setMsg(msgMateria,"❌ No se pudo guardar materia. Revisa permisos/reglas.","err");
+    setMsg(msgMaterias, "❌ No se pudo guardar materia.", "err");
   }
 });
 
-btnClearMateria.addEventListener("click", ()=>{
-  maNombre.value = "";
-  maGrado.value = "";
-  maActiva.value = "true";
-  setMsg(msgMateria,"","");
+document.getElementById("btnListMaterias").addEventListener("click", async () => {
+  try{
+    setMsg(msgMaterias, "", "");
+    tblMateriasBody.innerHTML = "";
+
+    const qy = query(collection(db, "materias"), orderBy("grado", "asc"), orderBy("nombre", "asc"), limit(300));
+    const snap = await getDocs(qy);
+
+    snap.forEach(docu => {
+      const d = docu.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${d.nombre || ""}</td>
+        <td>${d.grado ?? ""}</td>
+        <td>${d.activa ? "Sí" : "No"}</td>
+        <td class="mono">${docu.id}</td>
+      `;
+      tblMateriasBody.appendChild(tr);
+    });
+
+    setMsg(msgMaterias, `✅ Materias cargadas: ${snap.size}`, "ok");
+  }catch(e){
+    console.error(e);
+    setMsg(msgMaterias, "❌ Error cargando materias.", "err");
+  }
 });
 
-btnReload.addEventListener("click", refreshLists);
+/* =========================
+   SOLICITUDES
+   ========================= */
+const msgSolicitudes = document.getElementById("msgSolicitudes");
+const tblSolBody = document.querySelector("#tblSolicitudes tbody");
 
-async function refreshLists(){
+document.getElementById("btnListSolicitudes").addEventListener("click", async () => {
   try{
-    setMsg(msgList,"Cargando…","warn");
+    setMsg(msgSolicitudes, "", "");
+    tblSolBody.innerHTML = "";
 
-    // Cursos
-    const snapC = await getDocs(collection(db,"cursos"));
-    const cursos = [];
-    snapC.forEach(d => cursos.push({ id:d.id, ...d.data() }));
-    cursos.sort((a,b)=> String(a.nombre||a.id).localeCompare(String(b.nombre||b.id)));
+    const qy = query(collection(db, "solicitudes"), orderBy("createdAt", "desc"), limit(200));
+    const snap = await getDocs(qy);
 
-    listCursos.innerHTML = "";
-    if(cursos.length === 0){
-      listCursos.innerHTML = `<div class="small">No hay cursos.</div>`;
-    }else{
-      cursos.forEach(c=>{
-        const p = document.createElement("div");
-        p.className = "panel";
-        p.style.marginBottom = "10px";
-        p.innerHTML = `
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <h2 style="margin:0; font-size:14px;">${c.nombre || c.id} <span class="small">• grado ${c.grado ?? "—"} • ${c.jornada || "—"} • activo: ${c.activo===false?"NO":"SI"}</span></h2>
-            </div>
-            <div class="btns">
-              <button class="btn-ghost" data-edit-curso="${c.id}">Editar</button>
-            </div>
-          </div>
-        `;
-        p.querySelector(`[data-edit-curso="${CSS.escape(c.id)}"]`).addEventListener("click", ()=>{
-          cuNombre.value = (c.nombre || c.id || "").toUpperCase();
-          cuGrado.value = c.grado ?? "";
-          cuJornada.value = c.jornada || "Mañana";
-          cuActivo.value = (c.activo===false) ? "false" : "true";
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          setMsg(msgCurso,"Editando curso. Ajusta y guarda.","ok");
+    snap.forEach(docu => {
+      const d = docu.data();
+      const estado = d.status || "pendiente";
+      const tr = document.createElement("tr");
+
+      tr.innerHTML = `
+        <td class="mono">${docu.id}</td>
+        <td>${d.tipo || ""}</td>
+        <td>${d.docenteNombre || d.docenteUid || ""}</td>
+        <td>${d.descripcion || ""}</td>
+        <td><span class="pill small">${estado}</span></td>
+        <td>
+          <button class="btn small primary" data-act="aprobar">Aprobar</button>
+          <button class="btn small" data-act="rechazar">Rechazar</button>
+        </td>
+      `;
+
+      tr.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const act = btn.dataset.act;
+          await updateDoc(doc(db, "solicitudes", docu.id), {
+            status: act === "aprobar" ? "aprobada" : "rechazada",
+            resolvedAt: serverTimestamp()
+          });
+          setMsg(msgSolicitudes, `✅ Solicitud ${docu.id} -> ${act}`, "ok");
         });
-        listCursos.appendChild(p);
       });
-    }
 
-    // Materias
-    const snapM = await getDocs(collection(db,"materias"));
-    const mats = [];
-    snapM.forEach(d => mats.push({ id:d.id, ...d.data() }));
-    mats.sort((a,b)=> (Number(a.grado)-Number(b.grado)) || String(a.nombre||a.id).localeCompare(String(b.nombre||b.id)));
+      tblSolBody.appendChild(tr);
+    });
 
-    listMaterias.innerHTML = "";
-    if(mats.length === 0){
-      listMaterias.innerHTML = `<div class="small">No hay materias.</div>`;
-    }else{
-      mats.forEach(m=>{
-        const p = document.createElement("div");
-        p.className = "panel";
-        p.style.marginBottom = "10px";
-        p.innerHTML = `
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <h2 style="margin:0; font-size:14px;">${m.nombre || m.id} <span class="small">• grado ${m.grado ?? "—"} • activa: ${m.activa===false?"NO":"SI"}</span></h2>
-              <div class="small">ID: ${m.id}</div>
-            </div>
-            <div class="btns">
-              <button class="btn-ghost" data-edit-mat="${m.id}">Editar</button>
-            </div>
-          </div>
-        `;
-        p.querySelector(`[data-edit-mat="${CSS.escape(m.id)}"]`).addEventListener("click", ()=>{
-          maNombre.value = m.nombre || "";
-          maGrado.value = m.grado ?? "";
-          maActiva.value = (m.activa===false) ? "false" : "true";
-          window.scrollTo({ top: 0, behavior: "smooth" });
-          setMsg(msgMateria,"Editando materia. Ajusta y guarda.","ok");
-        });
-        listMaterias.appendChild(p);
-      });
-    }
-
-    setMsg(msgList,"","");
-
+    setMsg(msgSolicitudes, `✅ Solicitudes cargadas: ${snap.size}`, "ok");
   }catch(e){
     console.error(e);
-    setMsg(msgList,"❌ Error cargando listados. Revisa permisos/reglas.","err");
+    setMsg(msgSolicitudes, "❌ Error cargando solicitudes.", "err");
   }
-}
+});
 
-/* Auth guard */
-onAuthStateChanged(auth, async (user)=>{
-  if(!user) return (window.location.href="index.html");
-
-  try{
-    await loadConfig();
-
-    PROFILE = await loadProfile(user.uid);
-    if(!PROFILE){
-      alert("Tu usuario no tiene perfil. Contacta a soporte.");
-      await signOut(auth);
-      return (window.location.href="index.html");
-    }
-    if(PROFILE.activo !== true){
-      alert("Usuario inactivo.");
-      await signOut(auth);
-      return (window.location.href="index.html");
-    }
-
-    const role = normalizeRole(PROFILE.rol);
-    if(role !== "soporte"){
-      alert("Este módulo es solo para Soporte.");
-      window.location.href = "app.html";
-      return;
-    }
-
-    supNameEl.textContent = PROFILE.nombre || "(Sin nombre)";
-    await refreshLists();
-  }catch(e){
-    console.error(e);
-    setMsg(msgList,"Error inicializando. Revisa consola.","err");
+/* =========================
+   Auth guard + carga inicial
+   ========================= */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
   }
+
+  await loadConfigGeneral();
+
+  const profile = await loadUserProfile(user.uid);
+  if(!profile){
+    alert("Tu usuario no tiene perfil en la base de datos. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  if(profile.activo !== true){
+    alert("Usuario inactivo. Contacta a soporte.");
+    await signOut(auth);
+    window.location.href = "index.html";
+    return;
+  }
+
+  const role = normalizeRole(profile.rol);
+  if(role !== "soporte"){
+    alert("No tienes permisos para ingresar al módulo Soporte.");
+    window.location.href = "app.html";
+    return;
+  }
+
+  userNameEl.textContent = profile.nombre || "(Sin nombre)";
+  userRoleEl.textContent = profile.rol || "soporte";
+});
+
+/* =========================
+   Logout
+   ========================= */
+btnLogout.addEventListener("click", async () => {
+  await signOut(auth);
+  window.location.href = "index.html";
 });

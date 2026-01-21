@@ -1,143 +1,260 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soporte • Configuración</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Soporte | Sistema de calificaciones</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <div class="wrap">
-    <div class="shell">
+  <div class="bg"></div>
 
-      <div class="card">
-        <div class="header">
-          <div class="logo"><img src="assets/logo.png" alt="Logo IE"></div>
-
-          <div class="hgroup">
-            <h1 id="instName">Institución Educativa Imbilí Carretera</h1>
-            <p>Soporte • Configuración — <b id="supName">---</b></p>
+  <main class="wrap">
+    <!-- Header -->
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo.png" alt="Logo IE" />
+        <div class="brand-text">
+          <div class="brand-title" id="instName">Institución Educativa Imbilí Carretera</div>
+          <div class="brand-sub">
+            Bienvenido(a): <b id="userName">...</b> — Rol: <b id="userRole">soporte</b>
           </div>
-
-          <div class="chips">
-            <div class="chip">Año lectivo: <b id="anioLectivo">…</b></div>
-            <div class="chip">Períodos: <b id="periodos">…</b></div>
-            <button class="btn-ghost" id="btnBack">Volver</button>
-          </div>
-        </div>
-
-        <div class="content">
-
-          <!-- CURSOS -->
-          <div class="panel">
-            <h2>Crear / Editar curso</h2>
-            <p>Ej: 11A, 10B, 0A… (El documento se guarda con ID = nombre del curso en mayúscula)</p>
-
-            <div class="hr"></div>
-
-            <div class="row">
-              <div class="field">
-                <label for="cuNombre">Nombre curso *</label>
-                <input id="cuNombre" placeholder="Ej: 11A" />
-              </div>
-              <div class="field">
-                <label for="cuGrado">Grado *</label>
-                <input id="cuGrado" type="number" min="0" max="11" placeholder="Ej: 11" />
-              </div>
-              <div class="field">
-                <label for="cuJornada">Jornada</label>
-                <select id="cuJornada">
-                  <option value="Mañana">Mañana</option>
-                  <option value="Tarde">Tarde</option>
-                  <option value="Noche">Noche</option>
-                  <option value="Única">Única</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="cuActivo">Activo</label>
-                <select id="cuActivo">
-                  <option value="true">Sí</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="btns" style="margin-top:12px;">
-              <button class="btn-primary" id="btnSaveCurso">Guardar curso</button>
-              <button class="btn-ghost" id="btnClearCurso">Limpiar</button>
-            </div>
-
-            <div class="msg" id="msgCurso"></div>
-          </div>
-
-          <!-- MATERIAS -->
-          <div class="panel" style="margin-top:14px;">
-            <h2>Crear / Editar materia</h2>
-            <p>Las materias se cargan en Docente según el grado del curso.</p>
-
-            <div class="hr"></div>
-
-            <div class="row">
-              <div class="field">
-                <label for="maNombre">Nombre materia *</label>
-                <input id="maNombre" placeholder="Ej: Matemáticas" />
-              </div>
-              <div class="field">
-                <label for="maGrado">Grado *</label>
-                <input id="maGrado" type="number" min="0" max="11" placeholder="Ej: 11" />
-              </div>
-              <div class="field">
-                <label for="maActiva">Activa</label>
-                <select id="maActiva">
-                  <option value="true">Sí</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="btns" style="margin-top:12px;">
-              <button class="btn-primary" id="btnSaveMateria">Guardar materia</button>
-              <button class="btn-ghost" id="btnClearMateria">Limpiar</button>
-            </div>
-
-            <div class="msg" id="msgMateria"></div>
-          </div>
-
-          <!-- LISTADOS -->
-          <div class="panel" style="margin-top:14px;">
-            <div class="row" style="justify-content:space-between;">
-              <div>
-                <h2>Listados</h2>
-                <p class="small">Clic en “Editar” para cargar el formulario arriba.</p>
-              </div>
-              <div class="btns">
-                <button class="btn-ghost" id="btnReload">Refrescar</button>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
-            <h2 style="font-size:14px; margin:0 0 8px;">Cursos</h2>
-            <div id="listCursos"></div>
-
-            <div class="hr"></div>
-
-            <h2 style="font-size:14px; margin:0 0 8px;">Materias</h2>
-            <div id="listMaterias"></div>
-
-            <div class="msg" id="msgList"></div>
-          </div>
-
-        </div>
-
-        <div class="footer">
-          <span>© <span id="year"></span> IE Imbilí Carretera</span>
-          <span class="small">Soporte: crea cursos/materias sin entrar a Firebase.</span>
         </div>
       </div>
 
-    </div>
-  </div>
+      <div class="topbar-right">
+        <div class="pill">
+          Año lectivo: <b id="anioLectivo">...</b>
+        </div>
+        <div class="pill">
+          Períodos: <b id="periodos">...</b>
+        </div>
+        <button class="btn danger" id="btnLogout">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <!-- Panel -->
+    <section class="card">
+      <div class="card-h">
+        <div>
+          <h2>Módulo Soporte</h2>
+          <p class="muted">
+            Administra usuarios, cursos, materias y solicitudes.
+          </p>
+        </div>
+        <div class="card-actions">
+          <a class="btn" href="app.html">Volver</a>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="usuarios">Usuarios</button>
+        <button class="tab" data-tab="cursos">Cursos</button>
+        <button class="tab" data-tab="materias">Materias</button>
+        <button class="tab" data-tab="solicitudes">Solicitudes</button>
+      </div>
+
+      <!-- Vistas -->
+      <div class="tabview active" id="tab-usuarios">
+        <h3>Crear/Actualizar perfil de usuario</h3>
+        <p class="muted">
+          Esto crea el PERFIL en Firestore. El usuario (correo/contraseña) debe existir en Authentication.
+          Si no existe, créalo en Firebase Auth y luego pega aquí su UID.
+        </p>
+
+        <div class="grid2">
+          <div class="field">
+            <label>UID (de Firebase Auth) *</label>
+            <input id="u_uid" placeholder="Ej: H7QcNfTWRSVz..." />
+          </div>
+          <div class="field">
+            <label>Rol *</label>
+            <select id="u_rol">
+              <option value="docente">Docente</option>
+              <option value="secretaria">Secretaría</option>
+              <option value="rector">Rector(a)</option>
+              <option value="coordinador">Coordinador(a)</option>
+              <option value="soporte">Soporte</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Nombre y apellido *</label>
+            <input id="u_nombre" placeholder="Ej: Dario Figueroa" />
+          </div>
+          <div class="field">
+            <label>Cédula *</label>
+            <input id="u_cedula" placeholder="Ej: 1088729499" />
+          </div>
+
+          <div class="field">
+            <label>Correo *</label>
+            <input id="u_correo" placeholder="Ej: usuario@correo.com" />
+          </div>
+          <div class="field">
+            <label>Activo</label>
+            <select id="u_activo">
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Debe cambiar contraseña al ingresar</label>
+            <select id="u_must">
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn primary" id="btnSaveUser">Guardar perfil</button>
+          <button class="btn" id="btnLoadUser">Cargar perfil</button>
+        </div>
+
+        <div class="msg" id="msgUsuarios" style="display:none;"></div>
+      </div>
+
+      <div class="tabview" id="tab-cursos">
+        <h3>Crear/Actualizar cursos</h3>
+        <p class="muted">Ej: 1A, 1B, 11A. El ID del documento será el nombre del curso (ej: 11A).</p>
+
+        <div class="grid2">
+          <div class="field">
+            <label>Curso (ID) *</label>
+            <input id="c_id" placeholder="Ej: 11A" />
+          </div>
+          <div class="field">
+            <label>Grado (número) *</label>
+            <input id="c_grado" type="number" placeholder="Ej: 11" />
+          </div>
+          <div class="field">
+            <label>Jornada</label>
+            <select id="c_jornada">
+              <option>Mañana</option>
+              <option>Tarde</option>
+              <option>Noche</option>
+              <option>Única</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Año lectivo</label>
+            <input id="c_anio" type="number" placeholder="Ej: 2025" />
+          </div>
+          <div class="field">
+            <label>Director UID (opcional)</label>
+            <input id="c_diruid" placeholder="UID del director de grupo" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn primary" id="btnSaveCurso">Guardar curso</button>
+          <button class="btn" id="btnListCursos">Ver cursos</button>
+        </div>
+
+        <div class="msg" id="msgCursos" style="display:none;"></div>
+
+        <div class="tablewrap">
+          <table class="table" id="tblCursos">
+            <thead>
+              <tr>
+                <th>Curso</th>
+                <th>Grado</th>
+                <th>Jornada</th>
+                <th>Año</th>
+                <th>Director UID</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tabview" id="tab-materias">
+        <h3>Crear/Actualizar materias</h3>
+        <p class="muted">Se guardan en colección <b>materias</b>. Puedes asociar materias por grado.</p>
+
+        <div class="grid2">
+          <div class="field">
+            <label>ID (opcional)</label>
+            <input id="m_id" placeholder="Si lo dejas vacío se crea automático" />
+          </div>
+          <div class="field">
+            <label>Grado *</label>
+            <input id="m_grado" type="number" placeholder="Ej: 11" />
+          </div>
+          <div class="field">
+            <label>Nombre *</label>
+            <input id="m_nombre" placeholder="Ej: Matemáticas" />
+          </div>
+          <div class="field">
+            <label>Activa</label>
+            <select id="m_activa">
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn primary" id="btnSaveMateria">Guardar materia</button>
+          <button class="btn" id="btnListMaterias">Ver materias</button>
+        </div>
+
+        <div class="msg" id="msgMaterias" style="display:none;"></div>
+
+        <div class="tablewrap">
+          <table class="table" id="tblMaterias">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Grado</th>
+                <th>Activa</th>
+                <th>ID</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tabview" id="tab-solicitudes">
+        <h3>Solicitudes</h3>
+        <p class="muted">
+          Aquí verás solicitudes (ej: modificar nota / restablecer contraseña).
+          Puedes aprobar o rechazar.
+        </p>
+
+        <div class="row">
+          <button class="btn" id="btnListSolicitudes">Cargar solicitudes</button>
+        </div>
+
+        <div class="msg" id="msgSolicitudes" style="display:none;"></div>
+
+        <div class="tablewrap">
+          <table class="table" id="tblSolicitudes">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tipo</th>
+                <th>Docente</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <footer class="foot">© <span id="year"></span> IE Imbilí Carretera</footer>
+  </main>
 
   <script type="module" src="soporte.js"></script>
 </body>
